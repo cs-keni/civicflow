@@ -1,13 +1,22 @@
+using System.Text.Json;
+using CivicFlow.Application.Common;
 using CivicFlow.Domain.Entities;
 using CivicFlow.Domain.Enums;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace CivicFlow.Infrastructure.Data;
 
 public class CivicFlowDbContext : IdentityDbContext<ApplicationUser>
 {
-    public CivicFlowDbContext(DbContextOptions<CivicFlowDbContext> options) : base(options) { }
+    private readonly IAuditContext? _auditContext;
+
+    public CivicFlowDbContext(DbContextOptions<CivicFlowDbContext> options, IAuditContext? auditContext = null)
+        : base(options)
+    {
+        _auditContext = auditContext;
+    }
 
     public DbSet<Facility> Facilities => Set<Facility>();
     public DbSet<PermitApplication> PermitApplications => Set<PermitApplication>();
@@ -17,6 +26,61 @@ public class CivicFlowDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ReviewComment> ReviewComments => Set<ReviewComment>();
     public DbSet<PublicReport> PublicReports => Set<PublicReport>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var auditEntries = CreateAuditEntries();
+        if (auditEntries.Count > 0) AuditLogs.AddRange(auditEntries);
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private List<AuditLog> CreateAuditEntries()
+    {
+        var entries = new List<AuditLog>();
+        foreach (var entry in ChangeTracker.Entries()
+            .Where(e => e.Entity is not AuditLog
+                     && e.Entity is not ApplicationUser
+                     && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            entries.Add(new AuditLog
+            {
+                EntityType = entry.Entity.GetType().Name,
+                EntityId = GetEntityId(entry),
+                Action = entry.State switch
+                {
+                    EntityState.Added => AuditAction.Created,
+                    EntityState.Modified => AuditAction.Updated,
+                    EntityState.Deleted => AuditAction.Deleted,
+                    _ => AuditAction.Updated
+                },
+                UserId = _auditContext?.UserId,
+                IpAddress = _auditContext?.IpAddress,
+                UserAgent = _auditContext?.UserAgent,
+                OldValues = entry.State is EntityState.Modified or EntityState.Deleted
+                    ? SerializeValues(entry.OriginalValues) : null,
+                NewValues = entry.State is EntityState.Added or EntityState.Modified
+                    ? SerializeValues(entry.CurrentValues) : null,
+                OccurredAt = DateTime.UtcNow
+            });
+        }
+        return entries;
+    }
+
+    private static string GetEntityId(EntityEntry entry)
+    {
+        var keyValues = entry.Metadata.FindPrimaryKey()?.Properties
+            .Select(p => entry.Property(p.Name).CurrentValue?.ToString())
+            .ToArray();
+        return keyValues is null ? "unknown" : string.Join(",", keyValues);
+    }
+
+    private static string? SerializeValues(PropertyValues values)
+    {
+        var dict = new Dictionary<string, string?>();
+        foreach (var prop in values.Properties)
+            dict[prop.Name] = values[prop]?.ToString();
+        return JsonSerializer.Serialize(dict);
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -223,7 +287,6 @@ public class CivicFlowDbContext : IdentityDbContext<ApplicationUser>
             e.Property(a => a.UserId).HasMaxLength(450);
             e.Property(a => a.IpAddress).HasMaxLength(45);
             e.Property(a => a.UserAgent).HasMaxLength(500);
-            // OldValues / NewValues are JSON — no FK, no size limit
             e.Property(a => a.OldValues).HasColumnType("nvarchar(max)");
             e.Property(a => a.NewValues).HasColumnType("nvarchar(max)");
 

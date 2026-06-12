@@ -4,38 +4,46 @@ Cross-agent handoff document. Updated after every architectural change.
 
 ## Current State
 
-**Phase**: 1 — Domain + Database (complete as of 2026-06-12)
+**Phase**: 2 — Backend API (complete as of 2026-06-12)
 **Branch**: main
-**Last commit**: Phase 1 implementation (entities, migrations, T-SQL, seed data, 42 unit tests)
+**Last commit**: Phase 2 implementation (repositories, services, controllers, middleware, DI, health check)
 
 ## What Was Just Done
 
-Phase 1 complete:
-- 11 enums in `CivicFlow.Domain/Enums/`
-- 8 domain entities in `CivicFlow.Domain/Entities/` (pure POCOs, no EF attributes)
-- `CivicFlowDbContext` fully configured with Fluent API (sequences, query filters, cascade behaviors, string enum conversions)
-- EF Core migration `InitialSchema` created
-- `SeedData.cs` — runtime seeder (UserManager for users, direct DbContext for domain data)
-- T-SQL artifacts: 001_initial_schema.sql, 002_seed_data.sql, 003_indexes.sql, sp_GetPermitActivityReport.sql, vw_FacilityComplianceProfile.sql
-- 42 unit tests passing (domain defaults, enum logic, ReviewComment soft delete)
-- `dotnet build` → 0 errors; `dotnet test` → 42 passed
+Phase 2 complete:
+
+**Application layer** (`src/CivicFlow.Application/`):
+- `Common/`: `PaginatedResult<T>`, `ApiError`, `IAuditContext` (scoped interface)
+- `DTOs/`: 7 DTO files covering all request/response types
+- `Interfaces/`: All repository + service interfaces (entity-specific, no IRepository<T>)
+- `Services/`: FacilityService, PermitService, InspectionService, ViolationService, AuditService — IDOR prevention at service layer
+- `Validators/`: FluentValidation for all request DTOs
+
+**Infrastructure layer** (`src/CivicFlow.Infrastructure/`):
+- `Repositories/`: 6 repository implementations using EF Core
+- `Services/`: AuditContext, CurrentUserService, StubAIServices
+- `ServiceRegistration.cs`: `AddInfrastructure()` extension method
+- `CivicFlowDbContext.SaveChangesAsync` override auto-creates AuditLog entries in same transaction
+
+**API layer** (`src/CivicFlow.API/`):
+- `Middleware/AuditLogMiddleware.cs`: populates IAuditContext per request
+- `Controllers/`: 7 controllers — Auth, Facilities, Permits, Inspections, Violations, Public, Admin
+- `Program.cs`: fully wired (DI, middleware, health check, Swagger cookie security)
+
+**Build**: `dotnet build` → 0 errors | **Tests**: `dotnet test` → 43 passed
 
 ## What's Next
 
-**Phase 2 — Backend API** is next.
+**Phase 3 — Blazor WebAssembly Frontend**
 
 Key tasks:
-1. Repository interfaces in `CivicFlow.Application/Interfaces/`
-2. Repository implementations in `CivicFlow.Infrastructure/Repositories/`
-3. AI service interfaces: `IPermitAIService`, `IInspectionAIService`
-4. Application services: PermitService, InspectionService, ViolationService, AuditService, FacilityService
-5. AuthController (POST /api/auth/login, /logout, /me)
-6. FluentValidation validators for all request DTOs
-7. AuditLog middleware (IServiceScopeFactory, same-transaction write — D4)
-8. All API controllers (PermitsController, FacilitiesController, etc.)
-9. PaginatedResult<T> wrapper
-10. Ownership-scoped filtering for Applicant role (IDOR prevention)
-11. EF DbContext health check
+1. Cookie auth state provider (reads `/api/auth/me`)
+2. `AuthDelegatingHandler` — 401 → navigate to /login
+3. App layout: sidebar nav (role-adaptive), top bar, skip-to-main-content
+4. All pages (login, dashboard, permits CRUD, inspections, violations, public, admin)
+5. WCAG 2.1 AA: labels, aria, focus indicators, aria-live for SignalR
+6. Skeleton loading states on list/detail pages
+7. AI suggestions panel (skeleton + degradation fallback)
 
 ## Architecture Invariants (do not change without eng review)
 

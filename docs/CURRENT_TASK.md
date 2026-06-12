@@ -1,37 +1,36 @@
 # Current Task
 
-**Phase**: 2 — Backend API
+**Phase**: 3 — Blazor WebAssembly Frontend
 **Status**: Not started
 **Started**: —
 
 ## Goal
 
-Implement repositories, application services, auth controller, all API controllers, FluentValidation, AuditLog middleware, PaginatedResult<T>, ownership-scoped IDOR prevention, and health check.
+Build the Blazor WASM frontend: auth state provider, app layout, all pages (login, dashboard, facilities, permits, inspections, violations, public search, admin), WCAG 2.1 AA compliance, SignalR status updates, skeleton loading states, AI suggestions panel.
 
 ## Subtasks
 
-- [ ] Implement entity-specific repository interfaces in CivicFlow.Application/Interfaces/
-  - IPermitRepository, IFacilityRepository, IInspectionRepository, IViolationRepository
-  - IReviewCommentRepository, IAuditLogRepository
-- [ ] Implement repository classes in CivicFlow.Infrastructure/Repositories/
-- [ ] Implement AI service interfaces (IPermitAIService, IInspectionAIService)
-- [ ] Implement application services: PermitService, InspectionService, ViolationService, AuditService, FacilityService
-- [ ] Implement AuthController (POST /api/auth/login, /logout, /me) with cookie auth
-- [ ] Implement FluentValidation validators for all request DTOs
-- [ ] Implement global exception handling middleware
-- [ ] Implement AuditLog middleware (IServiceScopeFactory, same-transaction write)
-- [ ] Implement all API controllers with no business logic in controllers
-- [ ] Add PaginatedResult<T> wrapper for all list endpoints
-- [ ] Configure role-based authorization on all endpoints
-- [ ] Add ownership-scoped filtering (IDOR prevention for Applicant role)
-- [ ] Add EF DbContext health check (AspNetCore.HealthChecks.EntityFrameworkCore)
-- [ ] Update Swagger with cookie auth security definition
-- [ ] Update docs and commit
+- [ ] Configure cookie auth state provider (reads /api/auth/me)
+- [ ] Add AuthDelegatingHandler (intercepts 401, navigates to /login)
+- [ ] App layout: sidebar nav (role-adaptive), top bar, skip-to-main-content link
+- [ ] Pages: /login, /register
+- [ ] Pages: /dashboard (role-adaptive widgets)
+- [ ] Pages: /facilities, /facilities/{id}
+- [ ] Pages: /permits, /permits/new (multi-step form), /permits/{id}
+- [ ] Pages: /review-queue (Agency Staff only)
+- [ ] Pages: /inspections, /inspections/schedule, /inspections/{id}
+- [ ] Pages: /violations
+- [ ] Pages: /public/search, /public/facility/{id}
+- [ ] Pages: /admin/audit-log, /admin/users
+- [ ] Skeleton loading states on all list/detail pages
+- [ ] AI suggestions panel with animated skeleton + degradation fallback
+- [ ] Submit button spinner + disabled state during POST
+- [ ] WCAG 2.1 AA: aria, labels, focus indicators, keyboard nav, aria-live regions
 
 ## Previous Task (completed)
 
-Phase 1 — Domain + Database (completed 2026-06-12)
-- 11 domain enums, 8 domain entities, EF Core Fluent API + sequences
-- InitialSchema migration, SeedData class (8 users + 3 facilities + 10 permits + 8 inspections + 5 violations)
-- T-SQL artifacts: 001_initial_schema.sql, 002_seed_data.sql, 003_indexes.sql, sp_GetPermitActivityReport.sql, vw_FacilityComplianceProfile.sql
-- 42 unit tests (all passing)
+Phase 2 — Backend API (completed 2026-06-12)
+- All repositories, services, validators, DTOs, controllers
+- AuditLog middleware + DbContext SaveChangesAsync auto-audit hook
+- 7 API controllers, DI wiring, health check, Swagger cookie auth
+- `dotnet build` → 0 errors | `dotnet test` → 43 passed

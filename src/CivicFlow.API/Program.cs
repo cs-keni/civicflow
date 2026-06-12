@@ -1,8 +1,15 @@
+using CivicFlow.API.Middleware;
+using CivicFlow.Application.DTOs;
+using CivicFlow.Application.Validators;
+using CivicFlow.Domain.Entities;
+using CivicFlow.Infrastructure;
+using CivicFlow.Infrastructure.Data;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using Serilog;
-using CivicFlow.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,8 +23,6 @@ builder.Host.UseSerilog((ctx, lc) => lc
 var isSwaggerGen = builder.Environment.EnvironmentName == "SwaggerGen";
 
 // ── Database ──────────────────────────────────────────────────────────────────
-// SwaggerGen guard: use in-memory DB when generating Swagger docs in CI so the
-// step does not require a live SQL Server connection.
 if (isSwaggerGen)
 {
     builder.Services.AddDbContext<CivicFlowDbContext>(opts =>
@@ -39,7 +44,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(opts =>
 .AddDefaultTokenProviders();
 
 // ── Cookie auth (BFF pattern, D1) ────────────────────────────────────────────
-// HttpOnly SameSite=Strict: no JWT in JS, OWASP A07 compliant.
 builder.Services.ConfigureApplicationCookie(opts =>
 {
     opts.Cookie.HttpOnly = true;
@@ -50,7 +54,6 @@ builder.Services.ConfigureApplicationCookie(opts =>
     opts.SlidingExpiration = true;
     opts.Events.OnRedirectToLogin = ctx =>
     {
-        // Return 401 instead of redirect — Blazor WASM handles navigation
         ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return Task.CompletedTask;
     };
@@ -60,6 +63,12 @@ builder.Services.ConfigureApplicationCookie(opts =>
         return Task.CompletedTask;
     };
 });
+
+// ── Infrastructure DI ─────────────────────────────────────────────────────────
+builder.Services.AddInfrastructure();
+
+// ── FluentValidation ──────────────────────────────────────────────────────────
+builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>();
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
@@ -78,14 +87,30 @@ builder.Services.AddSwaggerGen(opts =>
         Description = "Permit and compliance management platform — portfolio project targeting Windsor Solutions"
     });
 
-    // Cookie auth security definition added in Phase 2 when auth endpoints exist
+    opts.AddSecurityDefinition("cookieAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Cookie,
+        Name = "civicflow_auth",
+        Description = "HttpOnly session cookie (BFF pattern — set via POST /api/auth/login)"
+    });
+    opts.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "cookieAuth" }
+            },
+            []
+        }
+    });
 });
 
-// ── Health checks (skip when generating Swagger — no DB available) ─────────────
-// EF DbContext health check (AspNetCore.HealthChecks.EntityFrameworkCore) added in Phase 2
+// ── Health checks ─────────────────────────────────────────────────────────────
 if (!isSwaggerGen)
 {
-    builder.Services.AddHealthChecks();
+    builder.Services.AddHealthChecks()
+        .AddDbContextCheck<CivicFlowDbContext>("database");
 }
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -100,9 +125,7 @@ builder.Services.AddRateLimiter(opts =>
 });
 
 // ── Blazor WASM hosting (same-origin, D2/D14) ─────────────────────────────────
-// CivicFlow.Client wwwroot is served from the API — same origin as the API,
-// which is required for SameSite=Strict cookies to work (D1).
-builder.Services.AddRazorPages(); // required for _Host fallback
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
@@ -119,7 +142,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// CSP header — tightened in Phase 2 after all endpoints are known
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers.Append("X-Content-Type-Options", "nosniff");
@@ -128,12 +150,13 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-app.UseStaticFiles();           // Blazor WASM static files
-app.UseBlazorFrameworkFiles(); // serves _framework/ for WASM
+app.UseStaticFiles();
+app.UseBlazorFrameworkFiles();
 
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<AuditLogMiddleware>(); // D4: populate audit context from HTTP request
 app.UseAuthorization();
 
 app.MapControllers();
@@ -147,7 +170,6 @@ if (!isSwaggerGen)
     app.MapHealthChecks("/health");
 }
 
-// Fallback to Blazor WASM index.html for all non-API routes (SPA routing)
 app.MapFallbackToFile("index.html");
 
 // ── Seed database ──────────────────────────────────────────────────────────────
@@ -159,5 +181,4 @@ if (!isSwaggerGen)
 
 app.Run();
 
-// Exposed for WebApplicationFactory in integration tests
 public partial class Program { }
