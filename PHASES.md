@@ -26,39 +26,47 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 0 — Setup
+## Phase 0 — Setup ✅
 
-- [ ] Initialize git repo, connect to `git@github.com:cs-keni/civicflow.git`
-- [ ] Install .NET 8 SDK in WSL
-- [ ] Create solution: `dotnet new sln -n CivicFlow`
-- [ ] Create projects:
+- [x] Initialize git repo, connect to `git@github.com:cs-keni/civicflow.git`
+- [x] Install .NET 8 SDK in WSL
+- [x] Create solution: `dotnet new sln -n CivicFlow`
+- [x] Create projects:
   - `dotnet new webapi -n CivicFlow.API`
   - `dotnet new classlib -n CivicFlow.Application`
   - `dotnet new classlib -n CivicFlow.Domain`
   - `dotnet new classlib -n CivicFlow.Infrastructure`
-  - `dotnet new blazorwasm -n CivicFlow.Client --hosted` (hosted = served from API)
+  - `dotnet new blazorwasm -n CivicFlow.Client` (standalone; served from API via `UseBlazorFrameworkFiles()`)
   - `dotnet new xunit -n CivicFlow.UnitTests`
   - `dotnet new xunit -n CivicFlow.IntegrationTests`
-- [ ] Wire project references (API → Application → Domain, API → Infrastructure, API → Client)
-- [ ] Install core NuGet packages:
+- [x] Wire project references (API → Application + Infrastructure, Application → Domain, Infrastructure → Application + Domain)
+- [x] Install core NuGet packages:
   - `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.EntityFrameworkCore.Tools`
-  - `Microsoft.EntityFrameworkCore.InMemory` (required for SwaggerGen CI guard — see below)
+  - `Microsoft.EntityFrameworkCore.InMemory` (required for SwaggerGen CI guard)
+  - `Microsoft.AspNetCore.Components.WebAssembly.Server` (for `UseBlazorFrameworkFiles()`)
   - `Swashbuckle.AspNetCore`, `Serilog.AspNetCore`, `Serilog.Sinks.Console`
   - `FluentValidation.AspNetCore`, `Microsoft.AspNetCore.SignalR`
   - `Anthropic.SDK` (Anthropic .NET SDK)
-- [ ] Set up local .NET tool manifest for Swashbuckle CLI:
+- [x] Set up local .NET tool manifest for Swashbuckle CLI:
   - `dotnet new tool-manifest` (creates `.config/dotnet-tools.json`)
-  - `dotnet tool install Swashbuckle.AspNetCore.Cli` (pinned in manifest)
+  - `dotnet tool install Swashbuckle.AspNetCore.Cli` (6.9.0 pinned in manifest)
   - CI must run `dotnet tool restore` after NuGet restore
-- [ ] Add `ASPNETCORE_ENVIRONMENT=SwaggerGen` guard in `Program.cs`:
-  - When `EnvironmentName == "SwaggerGen"`: register DbContext with `UseInMemoryDatabase("SwaggerGen")` instead of SQL Server
-  - Also skip `AddHealthChecks().AddDbContextCheck<CivicFlowDbContext>()` and any other DB-dependent hosted services when in SwaggerGen mode
-  - Pattern: `if (builder.Environment.EnvironmentName != "SwaggerGen") { /* SQL Server + health checks */ } else { /* InMemory only */ }`
-- [ ] Configure Docker Compose with SQL Server (single `api` service hosting WASM + API; `db` service)
-- [ ] Configure Serilog structured logging in Program.cs
-- [ ] Configure Swagger/OpenAPI with JWT/cookie auth headers
-- [ ] Create docs/ folder: AI_CONTEXT.md, HANDOFF.md, ENGINEERING_LOG.md, CURRENT_TASK.md
-- [ ] Initial git commit + push to remote
+- [x] Add `ASPNETCORE_ENVIRONMENT=SwaggerGen` guard in `Program.cs`:
+  - When `EnvironmentName == "SwaggerGen"`: register DbContext with `UseInMemoryDatabase("SwaggerGen")`
+  - Skip health checks in SwaggerGen mode (no DB available)
+- [x] Configure Docker Compose: `api` + `db` (SQL Server 2022 with healthcheck; `api` depends_on db healthy)
+- [x] Create `Dockerfile` (multi-stage SDK 8 build → aspnet 8 runtime)
+- [x] Configure Serilog structured logging in Program.cs
+- [x] Configure Swagger/OpenAPI (v1 doc, security definition deferred to Phase 2)
+- [x] Configure BFF cookie auth: HttpOnly SameSite=Strict, 401/403 instead of redirect (D1)
+- [x] Configure SignalR + 4 hub stubs (PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub)
+- [x] Configure rate limiting (login window — 5 req/min)
+- [x] Configure UseBlazorFrameworkFiles + MapFallbackToFile (D2/D14)
+- [x] Create `ApplicationUser : IdentityUser` + `CivicFlowDbContext : IdentityDbContext<ApplicationUser>` stubs
+- [x] Create `.env.example`, `.gitignore`
+- [x] Create `docs/` folder: AI_CONTEXT.md, HANDOFF.md, ENGINEERING_LOG.md, CURRENT_TASK.md
+- [x] `dotnet build CivicFlow.sln` → Build succeeded, 0 errors
+- [x] Initial git commit + push to remote
 
 ---
 

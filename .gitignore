@@ -1,0 +1,44 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.rsuser
+
+## Secrets / environment
+.env
+appsettings.Local.json
+appsettings.Production.json
+
+## Build artifacts
+publish/
+*.nupkg
+*.snupkg
+
+## Test results
+TestResults/
+coverage/
+*.coveragexml
+*.cobertura.xml
+
+## Logs
+logs/
+*.log
+
+## Blazor WASM output (generated during build, not source)
+wwwroot/css/app.css.gz
+wwwroot/_framework/
+
+## Docker volumes (local dev data)
+.docker/
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## Rider / VS Code
+.idea/
+*.iml
+.vscode/settings.json
+.vscode/launch.json
