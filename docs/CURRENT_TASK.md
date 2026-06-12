@@ -1,26 +1,37 @@
 # Current Task
 
-**Phase**: 1 — Domain + Database
+**Phase**: 2 — Backend API
 **Status**: Not started
 **Started**: —
 
 ## Goal
 
-Create all 9 domain entities, configure EF Core, run migrations, add T-SQL artifacts and seed data.
+Implement repositories, application services, auth controller, all API controllers, FluentValidation, AuditLog middleware, PaginatedResult<T>, ownership-scoped IDOR prevention, and health check.
 
 ## Subtasks
 
-- [ ] Delete placeholder Class1.cs files in Domain, Application, Infrastructure
-- [ ] Create domain entities in CivicFlow.Domain/Entities/ (9 entities: PermitApplication, Inspection, Violation, AuditLog, Facility, FacilityContact, Document, InspectionChecklist, InspectionChecklistItem)
-- [ ] Configure CivicFlowDbContext.OnModelCreating() with Fluent API
-- [ ] Add EF Core migration: `dotnet ef migrations add InitialCreate`
-- [ ] Create T-SQL artifacts (sequences, SP, view, indexes) in docs/sql/
-- [ ] Add Identity roles seed
-- [ ] Add user seed data (8 users, 2 per role)
-- [ ] Add sample permit/inspection/violation seed data
-- [ ] Update docs (HANDOFF, CURRENT_TASK, ENGINEERING_LOG)
-- [ ] Commit and push
+- [ ] Implement entity-specific repository interfaces in CivicFlow.Application/Interfaces/
+  - IPermitRepository, IFacilityRepository, IInspectionRepository, IViolationRepository
+  - IReviewCommentRepository, IAuditLogRepository
+- [ ] Implement repository classes in CivicFlow.Infrastructure/Repositories/
+- [ ] Implement AI service interfaces (IPermitAIService, IInspectionAIService)
+- [ ] Implement application services: PermitService, InspectionService, ViolationService, AuditService, FacilityService
+- [ ] Implement AuthController (POST /api/auth/login, /logout, /me) with cookie auth
+- [ ] Implement FluentValidation validators for all request DTOs
+- [ ] Implement global exception handling middleware
+- [ ] Implement AuditLog middleware (IServiceScopeFactory, same-transaction write)
+- [ ] Implement all API controllers with no business logic in controllers
+- [ ] Add PaginatedResult<T> wrapper for all list endpoints
+- [ ] Configure role-based authorization on all endpoints
+- [ ] Add ownership-scoped filtering (IDOR prevention for Applicant role)
+- [ ] Add EF DbContext health check (AspNetCore.HealthChecks.EntityFrameworkCore)
+- [ ] Update Swagger with cookie auth security definition
+- [ ] Update docs and commit
 
 ## Previous Task (completed)
 
-Phase 0 — Project Scaffold (completed 2026-06-12)
+Phase 1 — Domain + Database (completed 2026-06-12)
+- 11 domain enums, 8 domain entities, EF Core Fluent API + sequences
+- InitialSchema migration, SeedData class (8 users + 3 facilities + 10 permits + 8 inspections + 5 violations)
+- T-SQL artifacts: 001_initial_schema.sql, 002_seed_data.sql, 003_indexes.sql, sp_GetPermitActivityReport.sql, vw_FacilityComplianceProfile.sql
+- 42 unit tests (all passing)

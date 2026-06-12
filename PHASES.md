@@ -70,25 +70,26 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 1 — Domain + Database
+## Phase 1 — Domain + Database ✅
 
-- [ ] Define all domain entities in CivicFlow.Domain/Entities/ (all 9 entities per spec)
-- [ ] Define all enums in CivicFlow.Domain/Enums/ (PermitStatus, ViolationSeverity, etc.)
-- [ ] Configure EF Core Fluent API in CivicFlow.Infrastructure/Data/CivicFlowDbContext.cs:
+- [x] Define all domain entities in CivicFlow.Domain/Entities/ (8 entities per spec: Facility, PermitApplication, PermitStatusHistory, Inspection, Violation, ReviewComment, PublicReport, AuditLog)
+- [x] Define all enums in CivicFlow.Domain/Enums/ (11 enums: PermitStatus, ViolationSeverity, ViolationStatus, InspectionStatus, InspectionType, InspectionResult, PermitType, FacilityType, UserRole, AuditAction, ReportType)
+- [x] Configure EF Core Fluent API in CivicFlow.Infrastructure/Data/CivicFlowDbContext.cs:
   - Entity relationships (FKs, navigation properties)
   - HasQueryFilter on ReviewComment (IsDeleted)
   - SQL Server SEQUENCE for APP-YYYY-NNNN, INS-YYYY-NNNN, VIO-YYYY-NNNN
   - No data annotations in Domain — all configuration in DbContext
-- [ ] Create initial EF Core migration (`dotnet ef migrations add InitialSchema`)
-- [ ] Write seed data (HasData or custom seeder):
-  - 3 facilities, 10 permit applications across all statuses
-  - 8 inspections, 5 violations, 8 users total (2 per role × 4 authenticated roles: Applicant, Staff, Inspector, Admin — PublicViewer is unauthenticated, no Identity account seeded)
-- [ ] Write `database/001_initial_schema.sql` (manual T-SQL equivalent — no EF-generated, hand-written)
-- [ ] Write `database/002_seed_data.sql`
-- [ ] Write `database/003_indexes.sql` (with comments explaining each index choice)
-- [ ] Write `database/sp_GetPermitActivityReport.sql` (T-SQL stored procedure)
-- [ ] Write `database/vw_FacilityComplianceProfile.sql` (T-SQL view — used by public profile endpoint)
-- [ ] Write unit tests for entity validation logic (xUnit)
+- [x] Create initial EF Core migration (`dotnet ef migrations add InitialSchema`)
+- [x] Write seed data (SeedData.cs using UserManager at runtime):
+  - 3 facilities, 10 permit applications across all 8 statuses
+  - 8 inspections covering all 5 statuses, 5 violations with OR regulatory codes
+  - 8 users (2 per role × 4 authenticated roles; passwords: CivicFlow@2026!)
+- [x] Write `database/001_initial_schema.sql` (manual T-SQL — hand-written DDL)
+- [x] Write `database/002_seed_data.sql`
+- [x] Write `database/003_indexes.sql` (14 covering indexes, each with rationale comments)
+- [x] Write `database/sp_GetPermitActivityReport.sql` (T-SQL stored procedure)
+- [x] Write `database/vw_FacilityComplianceProfile.sql` (T-SQL view with heuristic ComplianceScore)
+- [x] Write unit tests for entity validation logic (42 tests, all passing)
 
 ---
 

@@ -150,6 +150,13 @@ if (!isSwaggerGen)
 // Fallback to Blazor WASM index.html for all non-API routes (SPA routing)
 app.MapFallbackToFile("index.html");
 
+// ── Seed database ──────────────────────────────────────────────────────────────
+if (!isSwaggerGen)
+{
+    using var scope = app.Services.CreateScope();
+    await SeedData.InitializeAsync(scope.ServiceProvider);
+}
+
 app.Run();
 
 // Exposed for WebApplicationFactory in integration tests

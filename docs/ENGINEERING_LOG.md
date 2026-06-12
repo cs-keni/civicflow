@@ -4,6 +4,58 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 1: Domain + Database
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Commit**: (see git log for hash)
+
+### Changes
+
+- Deleted placeholder `Class1.cs` from Domain, Application, Infrastructure
+- Created 11 domain enums in `CivicFlow.Domain/Enums/`: UserRole, FacilityType, PermitType, PermitStatus, InspectionStatus, InspectionType, InspectionResult, ViolationSeverity, ViolationStatus, AuditAction, ReportType
+- Created 8 domain entities in `CivicFlow.Domain/Entities/`: Facility, PermitApplication, PermitStatusHistory, Inspection, Violation, ReviewComment, PublicReport, AuditLog
+  - Pure POCOs — no EF Core attributes (Fluent API only, per architecture invariant)
+  - User FKs are `string` (Identity uses string IDs); no navigation to ApplicationUser to keep Domain clean
+  - AuditLog uses `long Id` for high-volume append-only workload
+- Rewrote `CivicFlowDbContext` with full Fluent API configuration:
+  - D6: 3 SQL Server SEQUENCE objects (`seq.Permit/Inspection/ViolationNumberSequence`)
+  - `HasDefaultValueSql` on ApplicationNumber, InspectionNumber, ViolationNumber generates `APP/INS/VIO-YYYY-NNNN` at DB insert
+  - D7: `HasQueryFilter(c => !c.IsDeleted)` on ReviewComment
+  - All enums stored as strings (no int columns — migration-safe)
+  - AuditLog has no FK to ApplicationUser (log outlives users)
+- Installed `dotnet-ef` 8.0.28 global tool; added `Microsoft.EntityFrameworkCore.Design` 8.x to Infrastructure
+- Created EF Core migration: `Data/Migrations/20260612154626_InitialSchema`
+- Created `SeedData.cs` — runtime seeder using UserManager (avoids PBKDF2 password hashing in migrations):
+  - 8 users (2 per role × 4 roles: Applicant, AgencyStaff, Inspector, Admin)
+  - All passwords: `CivicFlow@2026!`
+  - 3 facilities across OR/WA county
+  - 10 permit applications covering all 8 statuses
+  - 8 inspections covering all 5 statuses + multiple types
+  - 5 violations with realistic OR regulatory code references
+  - Guard: `if (db.Facilities.AnyAsync())` — skip if already seeded
+- Wired `SeedData.InitializeAsync` into `Program.cs` (guarded by `!isSwaggerGen`)
+- Created T-SQL artifacts in `database/`:
+  - `001_initial_schema.sql` — hand-authored DDL with sequences, constraints, defaults
+  - `002_seed_data.sql` — reference data matching SeedData.cs
+  - `003_indexes.sql` — 14 covering indexes with rationale comments for each
+  - `sp_GetPermitActivityReport.sql` — grouped permit activity with avg review/approval days
+  - `vw_FacilityComplianceProfile.sql` — per-facility compliance summary, heuristic ComplianceScore
+- Created 42 unit tests in `tests/CivicFlow.UnitTests/Domain/`:
+  - EntityDefaultsTests: default values for all 8 entities
+  - PermitStatusTests: status categorization (active review, terminal, etc.), enum ordering
+  - ReviewCommentSoftDeleteTests: IsDeleted + IsInternal filter logic
+
+### Build + Tests
+
+- `dotnet build CivicFlow.sln` → **Build succeeded, 0 errors**
+- `dotnet test CivicFlow.UnitTests` → **42 passed, 0 failed**
+
+### Next
+
+Phase 2 — Backend API (repositories, services, controllers, auth, validation, AuditLog middleware)
+
+---
+
 ## 2026-06-12 — Phase 0: Project Scaffold
 
 **Agent**: Claude Code (claude-sonnet-4-6)
