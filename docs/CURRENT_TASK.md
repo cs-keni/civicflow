@@ -27,9 +27,18 @@ Implement Claude API integration via `Anthropic.SDK`:
 - [ ] Add refusal check before returning AI response
 - [ ] Confirm no PII in prompts/logs
 
+## Recommended next step
+
+Run `/plan-eng-review` before writing Phase 5 code. AI integration touches
+service layer, DI registration, and a new Blazor editor — worth an arch pass.
+
 ## Previous Task (completed)
 
-Phase 4 — SignalR Real-Time (completed 2026-06-12)
+/review pass on Phase 3+4 diff (completed 2026-06-12, commit f6ea493)
+- Fixed 4 P1 bugs: shared-service disposal, Reconnecting guard, cross-hub routing, duplicate admin events
+- Open (deferred): AssignStaffAsync/CancelAsync emit no notification; IDOR in GetInspectionsAsync Applicant branch; admin-feed page never connects AdminActivityHub
+
+Phase 4 — SignalR Real-Time (completed 2026-06-12, commit fafe795)
 - IRealtimeNotifier interface + NullRealtimeNotifier (Application/Infrastructure)
 - SignalRNotifier override registered in API (fire-and-forget sends)
 - 4 hub classes (PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub)
