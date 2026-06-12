@@ -1,0 +1,83 @@
+@page "/violations"
+@attribute [Authorize(Roles = "AgencyStaff,Inspector,Admin")]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Violations — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Violations</h1>
+</div>
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="Violations list">
+        <thead>
+            <tr>
+                <th scope="col">Violation #</th>
+                <th scope="col">Code</th>
+                <th scope="col">Severity</th>
+                <th scope="col">Status</th>
+                <th scope="col">Due date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="5" Columns="5" />
+            }
+            else if (_result?.Items.Count > 0)
+            {
+                @foreach (var v in _result.Items)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Nav.NavigateTo("/violations/" + v.Id))">
+                        <td><a href="/violations/@v.Id" @onclick:stopPropagation>@v.ViolationNumber</a></td>
+                        <td style="font-family:monospace;font-size:.875rem">@v.Code</td>
+                        <td>
+                            <span class="cf-badge @SeverityClass(v.Severity)" aria-label="Severity: @v.Severity">@v.Severity</span>
+                        </td>
+                        <td><StatusBadge Status="@v.Status" /></td>
+                        <td>@(v.DueDate?.ToString("MMM d, yyyy") ?? "—")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="cf-empty-state"><p>No violations found.</p></div>
+                    </td>
+                </tr>
+
+            }
+        </tbody>
+    </table>
+    @if (_result is not null)
+    {
+        <PaginationBar Page="_page" TotalPages="_result.TotalPages" TotalCount="_result.TotalCount"
+                       OnPageChange="LoadPageAsync" />
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private int _page = 1;
+    private PaginatedResult<ViolationDto>? _result;
+
+    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _page = page;
+        _result = await Api.GetViolationsAsync(page);
+        _loading = false;
+    }
+
+    private static string SeverityClass(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" => "cf-badge-denied",
+        "major" => "cf-badge-changesrequested",
+        "minor" => "cf-badge-submitted",
+        _ => "cf-badge-underreview"
+    };
+}

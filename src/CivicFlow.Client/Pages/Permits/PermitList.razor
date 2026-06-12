@@ -1,0 +1,82 @@
+@page "/permits"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Permits — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Permit Applications</h1>
+    <a href="/permits/new" class="cf-btn cf-btn-primary">+ New application</a>
+</div>
+
+@if (_error is not null)
+{
+    <div class="cf-alert cf-alert-error" role="alert">@_error</div>
+}
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="Permit applications">
+        <thead>
+            <tr>
+                <th scope="col">Application #</th>
+                <th scope="col">Facility</th>
+                <th scope="col">Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">Submitted</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="5" Columns="5" />
+            }
+            else if (_result?.Items.Count > 0)
+            {
+                @foreach (var p in _result.Items)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Nav.NavigateTo("/permits/" + p.Id))" tabindex="0">
+                        <td><a href="/permits/@p.Id" @onclick:stopPropagation>@p.ApplicationNumber</a></td>
+                        <td>@p.FacilityName</td>
+                        <td>@p.PermitType</td>
+                        <td><StatusBadge Status="@p.Status" /></td>
+                        <td>@(p.SubmittedAt?.ToString("MMM d, yyyy") ?? "Draft")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5">
+                        <div class="cf-empty-state">
+                            <p>No permit applications yet.</p>
+                            <a href="/permits/new" class="cf-btn cf-btn-primary cf-btn-sm">Apply for a permit</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_result is not null)
+    {
+        <PaginationBar Page="_page" TotalPages="_result.TotalPages" TotalCount="_result.TotalCount"
+                       OnPageChange="LoadPageAsync" />
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private int _page = 1;
+    private PaginatedResult<PermitApplicationSummaryDto>? _result;
+
+    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _page = page;
+        _result = await Api.GetPermitsAsync(page);
+        _loading = false;
+    }
+}

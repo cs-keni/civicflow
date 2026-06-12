@@ -1,0 +1,89 @@
+@page "/login"
+@layout CivicFlow.Client.Layout.BlankLayout
+@inject CivicFlowApiClient Api
+@inject CookieAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+
+<PageTitle>Sign in — CivicFlow</PageTitle>
+
+<div class="cf-auth-wrapper">
+    <div class="cf-auth-card">
+        <div class="cf-auth-logo">
+            <h1>CivicFlow</h1>
+            <p>Permit &amp; Compliance Management</p>
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="cf-alert cf-alert-error" role="alert" aria-live="assertive">
+                @_error
+            </div>
+        }
+
+        <EditForm Model="@_model" OnValidSubmit="HandleLoginAsync" aria-label="Sign in form">
+            <div class="cf-form-group">
+                <label for="email" class="cf-form-label">Email address <span class="required" aria-hidden="true">*</span></label>
+                <input id="email" type="email" class="cf-input" @bind="_model.Email"
+                       autocomplete="email" required aria-required="true"
+                       aria-describedby="email-hint" />
+                <span id="email-hint" class="cf-form-hint">Enter your agency or applicant email</span>
+            </div>
+
+            <div class="cf-form-group">
+                <label for="password" class="cf-form-label">Password <span class="required" aria-hidden="true">*</span></label>
+                <input id="password" type="password" class="cf-input" @bind="_model.Password"
+                       autocomplete="current-password" required aria-required="true" />
+            </div>
+
+            <button type="submit" class="cf-btn cf-btn-primary" style="width:100%;justify-content:center;margin-top:.5rem"
+                    disabled="@_loading" aria-busy="@_loading">
+                @if (_loading)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                    <span>Signing in…</span>
+                }
+                else
+                {
+                    <span>Sign in</span>
+                }
+            </button>
+        </EditForm>
+
+        <div style="margin-top:1.25rem;text-align:center;font-size:.8rem;color:var(--cf-text-muted)">
+            <p>Demo credentials: <strong>admin@civicflow.gov</strong> / CivicFlow@2026!</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private readonly LoginModel _model = new();
+    private bool _loading;
+    private string? _error;
+
+    private class LoginModel
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var (user, error) = await Api.LoginAsync(new LoginRequest(_model.Email, _model.Password));
+
+        if (user is not null)
+        {
+            AuthProvider.NotifyLogin(user);
+            Nav.NavigateTo(ReturnUrl ?? "/");
+        }
+        else
+        {
+            _error = error ?? "Login failed";
+            _loading = false;
+        }
+    }
+}

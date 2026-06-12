@@ -1,0 +1,40 @@
+@if (TotalPages <= 1 && TotalCount == 0) { return; }
+
+<div class="cf-pagination" aria-label="Pagination">
+    <span>
+        @if (TotalCount > 0)
+        {
+            var start = (Page - 1) * PageSize + 1;
+            var end = Math.Min(Page * PageSize, TotalCount);
+            <text>@start–@end of @TotalCount</text>
+        }
+    </span>
+    <div class="cf-page-btns" role="navigation" aria-label="Page navigation">
+        <button class="cf-page-btn" @onclick="() => OnPageChange.InvokeAsync(Page - 1)"
+                disabled="@(Page <= 1)" aria-label="Previous page">
+            &#8592;
+        </button>
+        @for (int p = Math.Max(1, Page - 2); p <= Math.Min(TotalPages, Page + 2); p++)
+        {
+            var pg = p;
+            <button class="cf-page-btn @(pg == Page ? "active" : "")"
+                    @onclick="() => OnPageChange.InvokeAsync(pg)"
+                    aria-current="@(pg == Page ? "page" : null)"
+                    aria-label="Page @pg">
+                @pg
+            </button>
+        }
+        <button class="cf-page-btn" @onclick="() => OnPageChange.InvokeAsync(Page + 1)"
+                disabled="@(Page >= TotalPages)" aria-label="Next page">
+            &#8594;
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int Page { get; set; }
+    [Parameter, EditorRequired] public int TotalPages { get; set; }
+    [Parameter, EditorRequired] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+    [Parameter, EditorRequired] public EventCallback<int> OnPageChange { get; set; }
+}

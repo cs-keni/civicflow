@@ -1,0 +1,67 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@inject CivicFlowApiClient Api
+
+<PageTitle>Users — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Users</h1>
+</div>
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="User accounts">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Roles</th>
+                <th scope="col">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="5" Columns="4" />
+            }
+            else if (_users?.Count > 0)
+            {
+                @foreach (var u in _users)
+                {
+                    <tr>
+                        <td>@u.FullName</td>
+                        <td>@u.Email</td>
+                        <td>
+                            @foreach (var role in u.Roles)
+                            {
+                                <span class="cf-badge cf-badge-underreview" style="margin-right:.25rem;font-size:.75rem">@role</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.IsActive)
+                            { <span class="cf-badge cf-badge-approved">Active</span> }
+                            else
+                            { <span class="cf-badge cf-badge-expired">Inactive</span> }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4"><div class="cf-empty-state"><p>No users found.</p></div></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<UserDto>? _users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await Api.GetUsersAsync();
+        _loading = false;
+    }
+}

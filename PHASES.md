@@ -122,32 +122,32 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 3 — Blazor WebAssembly Frontend
+## Phase 3 — Blazor WebAssembly Frontend ✅
 
-- [ ] Set up Blazor WASM hosted from CivicFlow.API (same origin via UseBlazorFrameworkFiles)
-- [ ] Configure cookie auth state provider in Blazor WASM (AuthenticationStateProvider reading /api/auth/me)
-- [ ] Add `AuthDelegatingHandler` on the Blazor WASM HttpClient: intercepts 401 responses from any API call and navigates to /login (prevents blank/broken state when session expires mid-use)
-- [ ] Build app layout: sidebar nav (role-adaptive), top bar, skip-to-main-content link
-- [ ] Build pages (all with WCAG 2.1 AA — labels, aria, focus indicators, keyboard nav):
-  - /login, /register
-  - /dashboard (role-adaptive: applicant / staff / inspector / admin widgets)
+- [x] Set up Blazor WASM hosted from CivicFlow.API (same origin via UseBlazorFrameworkFiles)
+- [x] Configure cookie auth state provider in Blazor WASM (AuthenticationStateProvider reading /api/auth/me)
+- [x] Add `AuthDelegatingHandler` on the Blazor WASM HttpClient: intercepts 401 responses from any API call and navigates to /login
+- [x] Build app layout: sidebar nav (role-adaptive via AuthorizeView), top bar, skip-to-main-content link
+- [x] Build pages (all with WCAG 2.1 AA — labels, aria, focus indicators, keyboard nav):
+  - /login (BlankLayout, EditForm, demo credentials note)
+  - /dashboard (role-adaptive: applicant/staff/inspector/admin stat cards + recent tables)
   - /facilities, /facilities/{id}
-  - /permits, /permits/new (multi-step form with AI field validation feedback), /permits/{id}
-  - /review-queue (Agency Staff only)
-  - /inspections, /inspections/schedule, /inspections/{id} (with AI summary editor)
-  - /violations
-  - /public/search (unauthenticated), /public/facility/{id}
-  - /admin/audit-log (filters by date, user, action, entity), /admin/users
-- [ ] All pages: aria-live regions for SignalR status updates
-- [ ] Loading states on all data-fetching pages: skeleton placeholder while list/detail data loads (3 animated skeleton rows for list views)
-- [ ] AI suggestions panel: animated skeleton (3 placeholder lines) while Claude call is in-flight; "Suggestions unavailable" fallback when empty
-- [ ] Submit button: spinner + disabled state during form POST (prevents double-submit)
-- [ ] Permit status badge: color-coded with aria-label (SUBMITTED=blue, APPROVED=green, REJECTED=red, REVISIONS_REQUESTED=amber) so status is not communicated by color alone
-- [ ] All form inputs: associated labels, aria-describedby for errors
-- [ ] Color contrast ≥ 4.5:1 throughout (verify with browser devtools)
-- [ ] Create `docs/DEMO.md`: seeded user credentials (email + password for each of the 4 authenticated roles), exact click-through flows for each happy path, expected AI behavior (suggestions appear with AI_PROVIDER=real, mock suggestions with AI_PROVIDER=mock)
-- [ ] Take screenshots of each major page with seed data (feed into Phase 8 README)
-- [ ] Run `/qa` to verify all pages and flows
+  - /permits, /permits/new (3-step wizard with AI suggestions panel), /permits/{id} (review actions + history + comments)
+  - /review-queue (AgencyStaff/Admin only)
+  - /inspections, /inspections/schedule, /inspections/{id} (complete + cancel)
+  - /violations (with severity color-coding)
+  - /public/search (unauthenticated full-text search), /public/facilities/{id} (compliance profile)
+  - /admin/audit-log, /admin/users
+- [x] Loading states: SkeletonRows shimmer on all list/detail pages; aria-label="Loading" on wrappers
+- [x] AI suggestions panel: animated skeleton while in-flight; "Suggestions unavailable" fallback
+- [x] Submit button: spinner + disabled state during form POST (prevents double-submit)
+- [x] Status badges: color-coded with aria-label (not color alone) — WCAG 1.4.1
+- [x] All form inputs: associated labels, aria-required, aria-describedby for hints
+- [x] aria-live="polite" on Dashboard status region (ready for SignalR Phase 4)
+- [x] Deleted placeholder pages (Counter, Home, Weather); updated index.html title to "CivicFlow"
+- [ ] Create `docs/DEMO.md` (deferred to Phase 8 alongside README)
+- [ ] Screenshots with seed data (deferred to Phase 8)
+- [ ] Run `/qa` to verify all pages and flows (deferred — needs running API + DB)
 - [ ] (bUnit component tests deferred to Phase 7 — see GSTACK REVIEW REPORT)
 
 ---

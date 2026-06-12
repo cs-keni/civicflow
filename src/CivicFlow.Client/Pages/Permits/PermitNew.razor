@@ -1,0 +1,243 @@
+@page "/permits/new"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>New Permit Application — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>New Permit Application</h1>
+</div>
+
+<div class="cf-stepper" role="tablist" aria-label="Application steps">
+    @for (int i = 1; i <= 3; i++)
+    {
+        var step = i;
+        var label = step switch { 1 => "Facility", 2 => "Details", 3 => "Review", _ => "" };
+        var active = _step == step;
+        var done = _step > step;
+        <div class="cf-step @(active ? "cf-step-active" : done ? "cf-step-done" : "")" role="tab"
+             aria-selected="@active" aria-label="Step @step: @label @(done ? "(complete)" : "")">
+            <div class="cf-step-circle">@(done ? "✓" : step.ToString())</div>
+            <div class="cf-step-label">@label</div>
+        </div>
+        @if (step < 3) { <div class="cf-step-line" /> }
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="cf-alert cf-alert-error" role="alert">@_error</div>
+}
+
+@if (_step == 1)
+{
+    <div class="cf-card" style="max-width:600px">
+        <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Select Facility</h2></div>
+        <div class="cf-card-body">
+            <div class="cf-form-group">
+                <label for="facilitySelect" class="cf-form-label">Facility <span aria-hidden="true">*</span></label>
+                @if (_facilities is null)
+                {
+                    <div class="cf-skeleton" style="height:2.5rem;border-radius:6px" />
+                }
+                else
+                {
+                    <select id="facilitySelect" class="cf-select" @bind="_model.FacilityId">
+                        <option value="0">Select facility…</option>
+                        @foreach (var f in _facilities)
+                        {
+                            <option value="@f.Id">@f.LegalName @(f.DbaName is not null ? $"({f.DbaName})" : "")</option>
+                        }
+                    </select>
+                }
+            </div>
+            <p style="font-size:.85rem;color:var(--cf-text-muted)">
+                Don't see your facility? <a href="/facilities" target="_self">Register it first.</a>
+            </p>
+            <div style="display:flex;justify-content:flex-end;margin-top:1.5rem">
+                <button class="cf-btn cf-btn-primary" @onclick="NextStep" disabled="@(_model.FacilityId == 0)">Next →</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_step == 2)
+{
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.5rem;align-items:start">
+        <div class="cf-card">
+            <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Permit Details</h2></div>
+            <div class="cf-card-body">
+                <div class="cf-form-group">
+                    <label for="permitType" class="cf-form-label">Permit type <span aria-hidden="true">*</span></label>
+                    <select id="permitType" class="cf-select" @bind="_model.PermitType" @bind:after="FetchAiSuggestions">
+                        <option value="">Select type…</option>
+                        @foreach (var t in _permitTypes)
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="cf-form-group">
+                    <label for="description" class="cf-form-label">Description <span aria-hidden="true">*</span></label>
+                    <textarea id="description" class="cf-textarea" rows="4"
+                              @bind="_model.Description" @bind:event="oninput"
+                              placeholder="Describe the activity or use for which this permit is required…"
+                              aria-required="true" aria-describedby="desc-hint"></textarea>
+                    <div id="desc-hint" style="font-size:.8rem;color:var(--cf-text-muted)">Minimum 20 characters</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                    <div class="cf-form-group">
+                        <label for="validFrom" class="cf-form-label">Requested start date</label>
+                        <input id="validFrom" type="date" class="cf-input" @bind="_model.RequestedValidFrom" />
+                    </div>
+                    <div class="cf-form-group">
+                        <label for="validTo" class="cf-form-label">Requested end date</label>
+                        <input id="validTo" type="date" class="cf-input" @bind="_model.RequestedValidTo" />
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:1.5rem">
+                    <button class="cf-btn cf-btn-outline" @onclick="() => _step = 1">← Back</button>
+                    <button class="cf-btn cf-btn-primary" @onclick="NextStep"
+                            disabled="@(string.IsNullOrWhiteSpace(_model.PermitType) || string.IsNullOrWhiteSpace(_model.Description))">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <AiSuggestionsPanel Loading="_aiLoading" Suggestions="_aiSuggestions" ShowUnavailable="@(_aiError)" />
+    </div>
+}
+else if (_step == 3)
+{
+    <div class="cf-card" style="max-width:600px">
+        <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Review &amp; Submit</h2></div>
+        <div class="cf-card-body">
+            <div class="cf-detail-grid">
+                <div>
+                    <div class="cf-detail-label">Facility</div>
+                    <div class="cf-detail-value">@(_facilities?.FirstOrDefault(f => f.Id == _model.FacilityId)?.LegalName ?? "—")</div>
+                </div>
+                <div>
+                    <div class="cf-detail-label">Permit type</div>
+                    <div class="cf-detail-value">@_model.PermitType</div>
+                </div>
+                @if (_model.RequestedValidFrom is not null)
+                {
+                    <div>
+                        <div class="cf-detail-label">Requested start</div>
+                        <div class="cf-detail-value">@_model.RequestedValidFrom.Value.ToString("MMM d, yyyy")</div>
+                    </div>
+                }
+                @if (_model.RequestedValidTo is not null)
+                {
+                    <div>
+                        <div class="cf-detail-label">Requested end</div>
+                        <div class="cf-detail-value">@_model.RequestedValidTo.Value.ToString("MMM d, yyyy")</div>
+                    </div>
+                }
+            </div>
+            <div style="margin-top:1rem">
+                <div class="cf-detail-label">Description</div>
+                <p style="margin:.25rem 0 0">@_model.Description</p>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;margin-top:1.5rem;gap:.75rem">
+                <button class="cf-btn cf-btn-outline" @onclick="() => _step = 2" disabled="@_saving">← Back</button>
+                <div style="display:flex;gap:.75rem">
+                    <button class="cf-btn cf-btn-ghost" @onclick="() => SaveAsync(submit: false)" disabled="@_saving">
+                        @if (_saving && !_submitting) { <span>Saving…</span> } else { <span>Save draft</span> }
+                    </button>
+                    <button class="cf-btn cf-btn-primary" @onclick="() => SaveAsync(submit: true)" disabled="@_saving" aria-busy="@_saving">
+                        @if (_saving && _submitting) { <span>Submitting…</span> } else { <span>Submit application</span> }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery] private int FacilityId { get; set; }
+
+    private int _step = 1;
+    private bool _saving, _submitting;
+    private bool _aiLoading, _aiError;
+    private string? _error;
+
+    private readonly string[] _permitTypes = ["Air Emission", "Water Discharge", "Solid Waste", "Hazardous Waste", "Land Use", "Building", "Other"];
+
+    private List<FacilityDto>? _facilities;
+    private List<string> _aiSuggestions = [];
+
+    private PermitFormModel _model = new();
+
+    private class PermitFormModel
+    {
+        public int FacilityId { get; set; }
+        public string PermitType { get; set; } = "";
+        public string Description { get; set; } = "";
+        public DateTime? RequestedValidFrom { get; set; }
+        public DateTime? RequestedValidTo { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetFacilitiesAsync(1, 100);
+        _facilities = result?.Items ?? [];
+        if (FacilityId > 0) _model.FacilityId = FacilityId;
+    }
+
+    private void NextStep()
+    {
+        _error = null;
+        _step++;
+        if (_step == 2 && !string.IsNullOrEmpty(_model.PermitType))
+            _ = FetchAiSuggestions();
+    }
+
+    private async Task FetchAiSuggestions()
+    {
+        if (string.IsNullOrEmpty(_model.PermitType)) return;
+        _aiLoading = true;
+        _aiError = false;
+        _aiSuggestions = [];
+        StateHasChanged();
+
+        var suggestions = await Api.GetPermitAiSuggestionsAsync(_model.FacilityId, _model.PermitType);
+        if (suggestions is null)
+            _aiError = true;
+        else
+            _aiSuggestions = suggestions;
+
+        _aiLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync(bool submit)
+    {
+        _saving = true;
+        _submitting = submit;
+        _error = null;
+
+        var req = new CreatePermitRequest(
+            _model.FacilityId, _model.PermitType, _model.Description,
+            _model.RequestedValidFrom, _model.RequestedValidTo);
+
+        var (permit, error) = await Api.CreatePermitAsync(req);
+        if (permit is null)
+        {
+            _error = error;
+            _saving = false;
+            return;
+        }
+
+        if (submit)
+        {
+            var (submitted, submitError) = await Api.SubmitPermitAsync(permit.Id);
+            if (submitError is not null) _error = submitError;
+        }
+
+        Nav.NavigateTo($"/permits/{permit.Id}");
+    }
+}

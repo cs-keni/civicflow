@@ -1,39 +1,67 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">CivicFlow.Client</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+@inject NavigationManager Nav
+@inject CivicFlowApiClient Api
+@inject CookieAuthStateProvider AuthProvider
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<a href="/" class="cf-sidebar-brand">
+    <span class="cf-sidebar-brand-text">CivicFlow</span>
+    <span class="cf-sidebar-brand-sub">Permit &amp; Compliance</span>
+</a>
+
+<nav aria-label="Site navigation">
+    <AuthorizeView>
+        <Authorized>
+            <div class="cf-nav-section">
+                <NavLink class="cf-nav-link" href="/" Match="NavLinkMatch.All">
+                    &#9632; Dashboard
+                </NavLink>
+            </div>
+
+            <div class="cf-nav-section">
+                <div class="cf-nav-section-label">Facilities</div>
+                <NavLink class="cf-nav-link" href="/facilities">&#9632; My Facilities</NavLink>
+            </div>
+
+            <div class="cf-nav-section">
+                <div class="cf-nav-section-label">Permits</div>
+                <NavLink class="cf-nav-link" href="/permits">&#9632; My Permits</NavLink>
+                <AuthorizeView Roles="AgencyStaff,Admin" Context="_">
+                    <NavLink class="cf-nav-link" href="/review-queue">&#9632; Review Queue</NavLink>
+                </AuthorizeView>
+            </div>
+
+            <AuthorizeView Roles="AgencyStaff,Inspector,Admin" Context="_">
+                <div class="cf-nav-section">
+                    <div class="cf-nav-section-label">Inspections</div>
+                    <NavLink class="cf-nav-link" href="/inspections">&#9632; Inspections</NavLink>
+                </div>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="AgencyStaff,Inspector,Admin" Context="_">
+                <div class="cf-nav-section">
+                    <div class="cf-nav-section-label">Compliance</div>
+                    <NavLink class="cf-nav-link" href="/violations">&#9632; Violations</NavLink>
+                </div>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Admin" Context="_">
+                <div class="cf-nav-section">
+                    <div class="cf-nav-section-label">Administration</div>
+                    <NavLink class="cf-nav-link" href="/admin/audit-log">&#9632; Audit Log</NavLink>
+                    <NavLink class="cf-nav-link" href="/admin/users">&#9632; Users</NavLink>
+                </div>
+            </AuthorizeView>
+
+            <div class="cf-nav-section">
+                <div class="cf-nav-section-label">Public</div>
+                <NavLink class="cf-nav-link" href="/public/search">&#9632; Public Search</NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</nav>
 
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    protected override void OnInitialized()
     {
-        collapseNavMenu = !collapseNavMenu;
+        Nav.LocationChanged += (_, _) => StateHasChanged();
     }
 }

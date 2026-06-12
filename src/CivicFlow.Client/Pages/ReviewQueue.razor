@@ -1,0 +1,82 @@
+@page "/review-queue"
+@attribute [Authorize(Roles = "AgencyStaff,Admin")]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Review Queue — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Review Queue</h1>
+    <span class="cf-badge cf-badge-underreview" aria-label="@(_pending?.TotalCount ?? 0) pending">@(_pending?.TotalCount ?? 0) pending</span>
+</div>
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="Permit applications pending review">
+        <thead>
+            <tr>
+                <th scope="col">Application #</th>
+                <th scope="col">Facility</th>
+                <th scope="col">Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">Submitted</th>
+                <th scope="col">Assigned</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="5" Columns="6" />
+            }
+            else if (_pending?.Items.Count > 0)
+            {
+                @foreach (var p in _pending.Items)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Nav.NavigateTo("/permits/" + p.Id))">
+                        <td><a href="/permits/@p.Id" @onclick:stopPropagation>@p.ApplicationNumber</a></td>
+                        <td>@p.FacilityName</td>
+                        <td>@p.PermitType</td>
+                        <td><StatusBadge Status="@p.Status" /></td>
+                        <td>@(p.SubmittedAt?.ToString("MMM d, yyyy") ?? "—")</td>
+                        <td>
+                            @if (p.AssignedStaffName is not null)
+                            { <span>@p.AssignedStaffName</span> }
+                            else
+                            { <span class="cf-muted">Unassigned</span> }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="cf-empty-state">
+                            <p>Queue is empty — no applications pending review.</p>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_pending is not null)
+    {
+        <PaginationBar Page="_page" TotalPages="_pending.TotalPages" TotalCount="_pending.TotalCount"
+                       OnPageChange="LoadPageAsync" />
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private int _page = 1;
+    private PaginatedResult<PermitApplicationSummaryDto>? _pending;
+
+    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _page = page;
+        _pending = await Api.GetPermitsAsync(page, 20);
+        _loading = false;
+    }
+}

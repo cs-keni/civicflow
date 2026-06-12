@@ -4,6 +4,38 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 3: Blazor WASM Frontend
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Commit**: (see git log)
+
+### Changes
+
+- `CivicFlow.Client/Models/ApiModels.cs` — All client-side DTO records mirroring server DTOs. Independent of `CivicFlow.Application` (avoids FluentValidation.AspNetCore WASM incompatibility). Added `FacilityComplianceDto`, `InspectionPublicSummaryDto`.
+- `CivicFlow.Client/Auth/CookieAuthStateProvider.cs` — `AuthenticationStateProvider` that calls `/api/auth/me` on every auth check. `NotifyLogin`/`NotifyLogout` push instant state transitions to Blazor.
+- `CivicFlow.Client/Auth/AuthDelegatingHandler.cs` — `DelegatingHandler` that intercepts 401 HTTP responses and navigates to `/login?returnUrl=...`.
+- `CivicFlow.Client/Services/CivicFlowApiClient.cs` — Typed HTTP client. All API endpoints wrapped with `(T?, error?)` tuple returns for error surfacing. `SafeGet<T>` helper swallows network errors gracefully.
+- `CivicFlow.Client/Program.cs` — Wires `AuthDelegatingHandler`, `CivicFlowApiClient`, `AuthorizationCore`, `CookieAuthStateProvider`. Added `Microsoft.Extensions.Http` package reference (required for `AddHttpClient<T>` in WASM).
+- `CivicFlow.Client/App.razor` — `CascadingAuthenticationState` + `AuthorizeRouteView` with `/access-denied` redirect.
+- `CivicFlow.Client/wwwroot/css/app.css` — Complete design system: CSS custom properties (government-adjacent navy/teal palette, WCAG AA compliant), layout classes, status badges, skeleton shimmer, form/button/alert variants, stepper, AI panel.
+- `CivicFlow.Client/Layout/` — `MainLayout.razor` (skip link + sidebar + main), `NavMenu.razor` (role-adaptive via nested `AuthorizeView Context="_"`), `TopBar.razor`, `BlankLayout.razor` (login page).
+- `CivicFlow.Client/Shared/` — `StatusBadge`, `SkeletonRows`, `PaginationBar`, `AiSuggestionsPanel`, `RedirectToLogin`.
+- Pages created: `Login`, `AccessDenied`, `Dashboard`, `FacilityList`, `FacilityDetail`, `PermitList`, `PermitNew` (3-step wizard + AI panel), `PermitDetail` (review actions + history + comments), `ReviewQueue`, `InspectionList`, `InspectionSchedule`, `InspectionDetail`, `ViolationList`, `PublicSearch`, `PublicFacilityProfile`, `Admin/AuditLog`, `Admin/Users`.
+- Deleted placeholder pages: `Counter.razor`, `Home.razor`, `Weather.razor`.
+- Updated `wwwroot/index.html` title to "CivicFlow".
+- Build: **0 errors, 3 benign warnings (unread fields)** | Tests: **43 passed, 0 failed**
+
+### Key decisions
+
+- Client DTOs are independent records in `ApiModels.cs` — no project reference to `CivicFlow.Application`. This avoids the `FluentValidation.AspNetCore` dependency which has ASP.NET Core runtime references incompatible with WASM.
+- Nested `AuthorizeView` inside `<Authorized>` blocks requires `Context="_"` on inner components to avoid RZ9999 context name collision.
+- `@onclick` with string interpolation (`$"..."`) inside Razor attributes causes RZ1030 — fixed by using string concatenation (`"/path/" + id`) or `@(() => lambda)` wrapper.
+- `CompleteInspectionRequest` sets `CompletedDate = DateTime.UtcNow` client-side — inspector is completing the form at completion time.
+- `CreateInspectionRequest` requires `PermitApplicationId` (domain constraint) — form makes it a required field.
+- `Microsoft.Extensions.Http` added explicitly because `AddHttpClient<T>` extension is not implicitly available in WASM builds without it.
+
+---
+
 ## 2026-06-12 — Phase 2: Backend API
 
 **Agent**: Claude Code (claude-sonnet-4-6)

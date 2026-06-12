@@ -1,0 +1,75 @@
+@page "/public/search"
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Public Facility Search — CivicFlow</PageTitle>
+
+<div style="max-width:700px;margin:0 auto;padding:3rem 1rem">
+    <h1 style="text-align:center;margin-bottom:.5rem">Facility Compliance Search</h1>
+    <p style="text-align:center;color:var(--cf-text-muted);margin-bottom:2rem">
+        Search public compliance records for regulated facilities.
+    </p>
+
+    <div style="display:flex;gap:.75rem;margin-bottom:1.5rem">
+        <label for="searchQuery" class="visually-hidden">Search facilities</label>
+        <input id="searchQuery" class="cf-input" @bind="_query" @bind:event="oninput" @onkeydown="HandleKeydown"
+               placeholder="Facility name, address, or type…" aria-label="Search facilities" style="flex:1" />
+        <button class="cf-btn cf-btn-primary" @onclick="SearchAsync" disabled="@_loading" aria-busy="@_loading">
+            @if (_loading) { <span>Searching…</span> } else { <span>Search</span> }
+        </button>
+    </div>
+
+    @if (_results is not null)
+    {
+        @if (_results.Count == 0)
+        {
+            <div class="cf-empty-state" style="padding:3rem">
+                <p>No results for "<strong>@_query</strong>".</p>
+            </div>
+        }
+        else
+        {
+            <p class="cf-muted" style="margin-bottom:1rem">@_results.Count result(s)</p>
+            @foreach (var f in _results)
+            {
+                <div class="cf-card" style="margin-bottom:1rem">
+                    <div class="cf-card-body">
+                        <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:.5rem">
+                            <div>
+                                <h2 style="margin:0 0 .25rem;font-size:1rem">
+                                    <a href="/public/facilities/@f.Id">@f.LegalName @(f.DbaName is not null ? $"({f.DbaName})" : "")</a>
+                                </h2>
+                                <p style="margin:0;font-size:.875rem;color:var(--cf-text-muted)">
+                                    @f.FacilityType · @f.Address, @f.City, @f.State @f.ZipCode
+                                </p>
+                            </div>
+                            @if (f.IsActive)
+                            { <span class="cf-badge cf-badge-approved">Active</span> }
+                            else
+                            { <span class="cf-badge cf-badge-expired">Inactive</span> }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    private string _query = "";
+    private bool _loading;
+    private List<FacilityDto>? _results;
+
+    private async Task HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return;
+        _loading = true;
+        _results = await Api.GetPublicFacilitiesAsync(_query);
+        _loading = false;
+    }
+}

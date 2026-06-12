@@ -1,0 +1,62 @@
+@inject CivicFlowApiClient Api
+@inject CookieAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+
+<header class="cf-topbar">
+    <span style="flex:1; font-size:.9rem; font-weight:600; color:var(--cf-navy)">@_pageTitle</span>
+
+    <AuthorizeView>
+        <Authorized>
+            <span style="font-size:.8rem; color:var(--cf-text-muted)">@context.User.Identity!.Name</span>
+            <button class="cf-btn cf-btn-ghost cf-btn-sm" @onclick="LogoutAsync" aria-label="Sign out">
+                Sign out
+            </button>
+        </Authorized>
+    </AuthorizeView>
+</header>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string _pageTitle = "CivicFlow";
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        UpdateTitle(Nav.Uri);
+    }
+
+    private void OnLocationChanged(object? _, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateTitle(e.Location);
+        StateHasChanged();
+    }
+
+    private void UpdateTitle(string url)
+    {
+        var path = new Uri(url).AbsolutePath.ToLower().TrimEnd('/');
+        _pageTitle = path switch
+        {
+            "" or "/" => "Dashboard",
+            var p when p.StartsWith("/facilities") => "Facilities",
+            var p when p.StartsWith("/permits/new") => "New Permit",
+            var p when p.StartsWith("/permits") => "Permits",
+            "/review-queue" => "Review Queue",
+            var p when p.StartsWith("/inspections") => "Inspections",
+            var p when p.StartsWith("/violations") => "Violations",
+            var p when p.StartsWith("/admin/audit-log") => "Audit Log",
+            var p when p.StartsWith("/admin") => "Administration",
+            var p when p.StartsWith("/public") => "Public Portal",
+            _ => "CivicFlow"
+        };
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Api.LogoutAsync();
+        AuthProvider.NotifyLogout();
+        Nav.NavigateTo("/login");
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

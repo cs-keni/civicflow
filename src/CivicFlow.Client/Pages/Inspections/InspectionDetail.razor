@@ -1,0 +1,145 @@
+@page "/inspections/{Id:int}"
+@attribute [Authorize(Roles = "AgencyStaff,Inspector,Admin")]
+@inject CivicFlowApiClient Api
+
+<PageTitle>@(_inspection?.InspectionNumber ?? "Inspection") — CivicFlow</PageTitle>
+
+@if (_loading)
+{
+    <div role="status" aria-label="Loading inspection">
+        <span class="cf-skeleton" style="height:2rem;width:40%;display:block;margin-bottom:1rem" />
+        <div class="cf-card"><div class="cf-card-body"><span class="cf-skeleton" style="height:6rem;display:block" /></div></div>
+    </div>
+}
+else if (_inspection is null)
+{
+    <div class="cf-empty-state"><h1>Inspection not found</h1><a href="/inspections" class="cf-btn cf-btn-outline">Back</a></div>
+}
+else
+{
+    <div class="cf-page-header">
+        <div>
+            <h1>@_inspection.InspectionNumber</h1>
+            <p class="cf-muted">@_inspection.FacilityName · @_inspection.InspectionType</p>
+        </div>
+        <StatusBadge Status="@_inspection.Status" />
+    </div>
+
+    @if (_error is not null) { <div class="cf-alert cf-alert-error" role="alert">@_error</div> }
+    @if (_success is not null) { <div class="cf-alert cf-alert-success" role="status">@_success</div> }
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem">
+        <div class="cf-card">
+            <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Details</h2></div>
+            <div class="cf-card-body cf-detail-grid">
+                <div><div class="cf-detail-label">Scheduled</div><div class="cf-detail-value">@_inspection.ScheduledDate.ToString("MMM d, yyyy")</div></div>
+                @if (_inspection.CompletedDate is not null)
+                {
+                    <div><div class="cf-detail-label">Completed</div><div class="cf-detail-value">@_inspection.CompletedDate.Value.ToString("MMM d, yyyy")</div></div>
+                }
+                <div><div class="cf-detail-label">Inspector</div><div class="cf-detail-value cf-mono">@_inspection.InspectorId[..8]…</div></div>
+                <div><div class="cf-detail-label">Related permit</div><div class="cf-detail-value"><a href="/permits/@_inspection.PermitApplicationId">@_inspection.ApplicationNumber</a></div></div>
+                @if (_inspection.OverallRating is not null)
+                {
+                    <div><div class="cf-detail-label">Overall rating</div><div class="cf-detail-value">@_inspection.OverallRating</div></div>
+                }
+            </div>
+        </div>
+
+        @if (_inspection.Status is "Scheduled" or "In Progress")
+        {
+            <div class="cf-card">
+                <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Complete Inspection</h2></div>
+                <div class="cf-card-body">
+                    <div class="cf-form-group">
+                        <label for="rating" class="cf-form-label">Overall rating <span aria-hidden="true">*</span></label>
+                        <select id="rating" class="cf-select" @bind="_completeModel.OverallRating">
+                            <option value="">Select…</option>
+                            <option value="Satisfactory">Satisfactory</option>
+                            <option value="Conditional">Conditional</option>
+                            <option value="Unsatisfactory">Unsatisfactory</option>
+                        </select>
+                    </div>
+                    <div class="cf-form-group">
+                        <label for="findings" class="cf-form-label">Field notes <span aria-hidden="true">*</span></label>
+                        <textarea id="findings" class="cf-textarea" rows="4" @bind="_completeModel.FieldNotes" />
+                    </div>
+                    <div class="cf-form-group">
+                        <label for="publicSummary" class="cf-form-label">Public summary (optional)</label>
+                        <textarea id="publicSummary" class="cf-textarea" rows="2" @bind="_completeModel.PublicSummary" />
+                    </div>
+                    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem">
+                        <button class="cf-btn cf-btn-danger cf-btn-sm" @onclick="CancelAsync" disabled="@_actioning">Cancel inspection</button>
+                        <button class="cf-btn cf-btn-success" @onclick="CompleteAsync"
+                                disabled="@(_actioning || string.IsNullOrEmpty(_completeModel.OverallRating) || string.IsNullOrEmpty(_completeModel.FieldNotes))"
+                                aria-busy="@_actioning">
+                            Mark complete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_inspection.PublicSummary))
+        {
+            <div class="cf-card">
+                <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Public Summary</h2></div>
+                <div class="cf-card-body"><p style="margin:0">@_inspection.PublicSummary</p></div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_inspection.FieldNotes))
+        {
+            <div class="cf-card" style="grid-column:1/-1">
+                <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Field Notes</h2></div>
+                <div class="cf-card-body"><p style="margin:0;white-space:pre-wrap">@_inspection.FieldNotes</p></div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private bool _actioning;
+    private string? _error, _success;
+
+    private InspectionDto? _inspection;
+    private CompleteModel _completeModel = new();
+
+    private class CompleteModel
+    {
+        public string OverallRating { get; set; } = "";
+        public string FieldNotes { get; set; } = "";
+        public string? PublicSummary { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _inspection = await Api.GetInspectionAsync(Id);
+        _loading = false;
+    }
+
+    private async Task CompleteAsync()
+    {
+        _actioning = true;
+        _error = null;
+        var req = new CompleteInspectionRequest(
+            _completeModel.FieldNotes, _completeModel.OverallRating, DateTime.UtcNow);
+        var (_, error) = await Api.CompleteInspectionAsync(Id, req);
+        if (error is not null) _error = error;
+        else { _success = "Inspection marked complete."; _inspection = await Api.GetInspectionAsync(Id); }
+        _actioning = false;
+    }
+
+    private async Task CancelAsync()
+    {
+        _actioning = true;
+        _error = null;
+        var (_, error) = await Api.CancelInspectionAsync(Id);
+        if (error is not null) _error = error;
+        else { _success = "Inspection cancelled."; _inspection = await Api.GetInspectionAsync(Id); }
+        _actioning = false;
+    }
+}

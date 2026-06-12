@@ -1,0 +1,97 @@
+@page "/facilities/{Id:int}"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>@(_facility?.LegalName ?? "Facility") — CivicFlow</PageTitle>
+
+@if (_loading)
+{
+    <div aria-label="Loading facility" role="status">
+        <span class="cf-skeleton cf-skeleton-text narrow" style="height:2rem;width:40%;margin-bottom:1rem" />
+        <div class="cf-stats">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="cf-stat"><span class="cf-skeleton cf-skeleton-text" style="height:2rem;margin-bottom:.5rem" /><span class="cf-skeleton cf-skeleton-text medium" /></div>
+            }
+        </div>
+    </div>
+}
+else if (_facility is null)
+{
+    <div class="cf-empty-state"><h1>Facility not found</h1><a href="/facilities" class="cf-btn cf-btn-outline">Back to facilities</a></div>
+}
+else
+{
+    <div class="cf-page-header">
+        <div>
+            <h1>@_facility.LegalName @(_facility.DbaName is not null ? $"({_facility.DbaName})" : "")</h1>
+            <p class="cf-muted">@_facility.Address, @_facility.City, @_facility.State @_facility.ZipCode</p>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+            @if (_facility.IsActive)
+            { <span class="cf-badge cf-badge-approved">Active</span> }
+            else
+            { <span class="cf-badge cf-badge-expired">Inactive</span> }
+            <a href="/permits/new?facilityId=@_facility.Id" class="cf-btn cf-btn-primary cf-btn-sm">+ New permit</a>
+        </div>
+    </div>
+
+    <div class="cf-card" style="margin-bottom:1.5rem">
+        <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Facility Details</h2></div>
+        <div class="cf-card-body cf-detail-grid">
+            <div><div class="cf-detail-label">Type</div><div class="cf-detail-value">@_facility.FacilityType</div></div>
+            <div><div class="cf-detail-label">County</div><div class="cf-detail-value">@_facility.County</div></div>
+            <div><div class="cf-detail-label">Owner ID</div><div class="cf-detail-value cf-mono">@_facility.OwnerId[..8]…</div></div>
+            <div><div class="cf-detail-label">Created</div><div class="cf-detail-value">@_facility.CreatedAt.ToString("MMM d, yyyy")</div></div>
+        </div>
+    </div>
+
+    <div class="cf-card">
+        <div class="cf-card-header">
+            <h2 style="margin:0;font-size:1rem">Permit Applications</h2>
+            <a href="/permits?facilityId=@_facility.Id" class="cf-btn cf-btn-ghost cf-btn-sm">View all</a>
+        </div>
+        @if (_permits?.Items.Count > 0)
+        {
+            <table class="cf-table" aria-label="Permits for this facility">
+                <thead>
+                    <tr><th scope="col">Number</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Submitted</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _permits.Items)
+                    {
+                        <tr>
+                            <td><a href="/permits/@p.Id">@p.ApplicationNumber</a></td>
+                            <td>@p.PermitType</td>
+                            <td><StatusBadge Status="@p.Status" /></td>
+                            <td>@(p.SubmittedAt?.ToString("MMM d, yyyy") ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="cf-card-body cf-empty-state" style="padding:2rem">
+                <p>No permits for this facility.</p>
+                <a href="/permits/new?facilityId=@_facility.Id" class="cf-btn cf-btn-primary cf-btn-sm">Apply for a permit</a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private FacilityDto? _facility;
+    private PaginatedResult<PermitApplicationSummaryDto>? _permits;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _facility = await Api.GetFacilityAsync(Id);
+        _permits = await Api.GetPermitsAsync(1, 10);
+        _loading = false;
+    }
+}

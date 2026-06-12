@@ -1,36 +1,29 @@
 # Current Task
 
-**Phase**: 3 — Blazor WebAssembly Frontend
+**Phase**: 4 — SignalR Real-Time
 **Status**: Not started
 **Started**: —
 
 ## Goal
 
-Build the Blazor WASM frontend: auth state provider, app layout, all pages (login, dashboard, facilities, permits, inspections, violations, public search, admin), WCAG 2.1 AA compliance, SignalR status updates, skeleton loading states, AI suggestions panel.
+Implement 4 SignalR hubs (PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub), wire fire-and-forget sends from service layer, connect Blazor WASM clients with cookie auth, add aria-live regions for status update notifications.
 
 ## Subtasks
 
-- [ ] Configure cookie auth state provider (reads /api/auth/me)
-- [ ] Add AuthDelegatingHandler (intercepts 401, navigates to /login)
-- [ ] App layout: sidebar nav (role-adaptive), top bar, skip-to-main-content link
-- [ ] Pages: /login, /register
-- [ ] Pages: /dashboard (role-adaptive widgets)
-- [ ] Pages: /facilities, /facilities/{id}
-- [ ] Pages: /permits, /permits/new (multi-step form), /permits/{id}
-- [ ] Pages: /review-queue (Agency Staff only)
-- [ ] Pages: /inspections, /inspections/schedule, /inspections/{id}
-- [ ] Pages: /violations
-- [ ] Pages: /public/search, /public/facility/{id}
-- [ ] Pages: /admin/audit-log, /admin/users
-- [ ] Skeleton loading states on all list/detail pages
-- [ ] AI suggestions panel with animated skeleton + degradation fallback
-- [ ] Submit button spinner + disabled state during POST
-- [ ] WCAG 2.1 AA: aria, labels, focus indicators, keyboard nav, aria-live regions
+- [ ] Implement SignalR hub classes in CivicFlow.API/Hubs/
+- [ ] Wire hub sends in service layer (fire-and-forget)
+- [ ] Blazor WASM: HubConnectionBuilder with withCredentials (cookie)
+- [ ] Wire permit status changes → applicant group
+- [ ] Wire new application submitted → staff-reviewers group
+- [ ] Wire inspection scheduled → inspector group
+- [ ] Wire all activity → admin-feed group
+- [ ] Add aria-live regions to Dashboard and ReviewQueue for real-time updates
 
 ## Previous Task (completed)
 
-Phase 2 — Backend API (completed 2026-06-12)
-- All repositories, services, validators, DTOs, controllers
-- AuditLog middleware + DbContext SaveChangesAsync auto-audit hook
-- 7 API controllers, DI wiring, health check, Swagger cookie auth
+Phase 3 — Blazor WebAssembly Frontend (completed 2026-06-12)
+- Auth state provider, typed HTTP client, delegating handler
+- CSS design system, layout (sidebar/nav/topbar), shared components
+- 17 pages: Login, Dashboard, Facilities (2), Permits (3), ReviewQueue, Inspections (3), ViolationList, Public (2), Admin (2)
+- WCAG 2.1 AA: skip link, aria-labels, aria-required, aria-live, role attributes, status badges with aria-label
 - `dotnet build` → 0 errors | `dotnet test` → 43 passed

@@ -1,0 +1,76 @@
+@page "/inspections"
+@attribute [Authorize(Roles = "AgencyStaff,Inspector,Admin")]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Inspections — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Inspections</h1>
+    <a href="/inspections/schedule" class="cf-btn cf-btn-primary">+ Schedule inspection</a>
+</div>
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="Inspections list">
+        <thead>
+            <tr>
+                <th scope="col">Number</th>
+                <th scope="col">Facility</th>
+                <th scope="col">Type</th>
+                <th scope="col">Scheduled</th>
+                <th scope="col">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="5" Columns="5" />
+            }
+            else if (_result?.Items.Count > 0)
+            {
+                @foreach (var i in _result.Items)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Nav.NavigateTo("/inspections/" + i.Id))">
+                        <td><a href="/inspections/@i.Id" @onclick:stopPropagation>@i.InspectionNumber</a></td>
+                        <td>@i.FacilityName</td>
+                        <td>@i.InspectionType</td>
+                        <td>@i.ScheduledDate.ToString("MMM d, yyyy")</td>
+                        <td><StatusBadge Status="@i.Status" /></td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5">
+                        <div class="cf-empty-state">
+                            <p>No inspections scheduled.</p>
+                            <a href="/inspections/schedule" class="cf-btn cf-btn-primary cf-btn-sm">Schedule one</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_result is not null)
+    {
+        <PaginationBar Page="_page" TotalPages="_result.TotalPages" TotalCount="_result.TotalCount"
+                       OnPageChange="LoadPageAsync" />
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private int _page = 1;
+    private PaginatedResult<InspectionSummaryDto>? _result;
+
+    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _page = page;
+        _result = await Api.GetInspectionsAsync(page);
+        _loading = false;
+    }
+}

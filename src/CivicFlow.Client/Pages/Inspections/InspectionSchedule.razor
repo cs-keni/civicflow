@@ -1,0 +1,122 @@
+@page "/inspections/schedule"
+@attribute [Authorize(Roles = "AgencyStaff,Admin")]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Schedule Inspection — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Schedule Inspection</h1>
+</div>
+
+<div class="cf-card" style="max-width:600px">
+    <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Inspection Details</h2></div>
+    <div class="cf-card-body">
+        @if (_error is not null)
+        {
+            <div class="cf-alert cf-alert-error" role="alert">@_error</div>
+        }
+
+        <div class="cf-form-group">
+            <label for="facility" class="cf-form-label">Facility <span aria-hidden="true">*</span></label>
+            @if (_facilities is null)
+            {
+                <div class="cf-skeleton" style="height:2.5rem;border-radius:6px" />
+            }
+            else
+            {
+                <select id="facility" class="cf-select" @bind="_model.FacilityId">
+                    <option value="0">Select facility…</option>
+                    @foreach (var f in _facilities)
+                    {
+                        <option value="@f.Id">@f.LegalName</option>
+                    }
+                </select>
+            }
+        </div>
+
+        <div class="cf-form-group">
+            <label for="permitId" class="cf-form-label">Related permit ID <span aria-hidden="true">*</span></label>
+            <input id="permitId" type="number" class="cf-input" @bind="_model.PermitApplicationId" placeholder="Permit application ID…" min="1" aria-required="true" />
+            <div style="font-size:.8rem;color:var(--cf-text-muted)">Every inspection must be linked to a permit application.</div>
+        </div>
+
+        <div class="cf-form-group">
+            <label for="type" class="cf-form-label">Inspection type <span aria-hidden="true">*</span></label>
+            <select id="type" class="cf-select" @bind="_model.InspectionType">
+                <option value="">Select type…</option>
+                @foreach (var t in _types)
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+        </div>
+
+        <div class="cf-form-group">
+            <label for="scheduledDate" class="cf-form-label">Scheduled date <span aria-hidden="true">*</span></label>
+            <input id="scheduledDate" type="date" class="cf-input" @bind="_model.ScheduledDate" aria-required="true"
+                   min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        </div>
+
+        <div class="cf-form-group">
+            <label for="inspector" class="cf-form-label">Inspector user ID <span aria-hidden="true">*</span></label>
+            <input id="inspector" class="cf-input" @bind="_model.InspectorId" placeholder="Inspector user ID…" aria-required="true" />
+        </div>
+
+<div style="display:flex;justify-content:space-between;margin-top:1.5rem">
+            <a href="/inspections" class="cf-btn cf-btn-outline">Cancel</a>
+            <button class="cf-btn cf-btn-primary" @onclick="ScheduleAsync"
+                    disabled="@(_saving || _model.FacilityId == 0 || _model.PermitApplicationId <= 0 || string.IsNullOrEmpty(_model.InspectionType) || string.IsNullOrEmpty(_model.InspectorId))"
+                    aria-busy="@_saving">
+                @if (_saving) { <span>Scheduling…</span> } else { <span>Schedule inspection</span> }
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _saving;
+    private string? _error;
+    private List<FacilityDto>? _facilities;
+
+    private readonly string[] _types = ["Routine", "Compliance", "Complaint Response", "Follow-up", "Pre-permit", "Closure"];
+
+    private ScheduleModel _model = new();
+
+    private class ScheduleModel
+    {
+        public int FacilityId { get; set; }
+        public int PermitApplicationId { get; set; }
+        public string InspectionType { get; set; } = "";
+        public DateTime ScheduledDate { get; set; } = DateTime.Today.AddDays(7);
+        public string InspectorId { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetFacilitiesAsync(1, 100);
+        _facilities = result?.Items ?? [];
+    }
+
+    private async Task ScheduleAsync()
+    {
+        _saving = true;
+        _error = null;
+
+        var req = new CreateInspectionRequest(
+            _model.PermitApplicationId,
+            _model.FacilityId,
+            _model.InspectorId,
+            _model.ScheduledDate,
+            _model.InspectionType);
+
+        var (inspection, error) = await Api.CreateInspectionAsync(req);
+        if (inspection is not null)
+            Nav.NavigateTo($"/inspections/{inspection.Id}");
+        else
+        {
+            _error = error;
+            _saving = false;
+        }
+    }
+}

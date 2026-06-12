@@ -1,0 +1,194 @@
+@page "/facilities"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Facilities — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <h1>Facilities</h1>
+    <button class="cf-btn cf-btn-primary" @onclick="() => _showCreate = true">+ Add facility</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="cf-alert cf-alert-error" role="alert">@_error</div>
+}
+
+<div class="cf-table-wrapper">
+    <table class="cf-table" aria-label="Facilities list">
+        <thead>
+            <tr>
+                <th scope="col">Legal Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">City</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_loading)
+            {
+                <SkeletonRows Count="3" Columns="5" />
+            }
+            else if (_result?.Items.Count > 0)
+            {
+                @foreach (var f in _result.Items)
+                {
+                    <tr>
+                        <td><a href="/facilities/@f.Id">@f.LegalName @(f.DbaName is not null ? $"({f.DbaName})" : "")</a></td>
+                        <td>@f.FacilityType</td>
+                        <td>@f.City, @f.State</td>
+                        <td>
+                            @if (f.IsActive)
+                            { <span class="cf-badge cf-badge-approved" aria-label="Status: Active">Active</span> }
+                            else
+                            { <span class="cf-badge cf-badge-expired" aria-label="Status: Inactive">Inactive</span> }
+                        </td>
+                        <td>
+                            <a href="/facilities/@f.Id" class="cf-btn cf-btn-ghost cf-btn-sm" aria-label="View @f.LegalName">View</a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5">
+                        <div class="cf-empty-state">
+                            <p>No facilities yet.</p>
+                            <button class="cf-btn cf-btn-primary cf-btn-sm" @onclick="() => _showCreate = true">Add your first facility</button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_result is not null)
+    {
+        <PaginationBar Page="_page" TotalPages="_result.TotalPages" TotalCount="_result.TotalCount"
+                       OnPageChange="LoadPageAsync" />
+    }
+</div>
+
+@if (_showCreate)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center"
+         role="dialog" aria-modal="true" aria-labelledby="create-facility-title">
+        <div class="cf-card" style="width:100%;max-width:500px;margin:1rem">
+            <div class="cf-card-header">
+                <h2 id="create-facility-title" style="margin:0;font-size:1rem">Add Facility</h2>
+                <button class="cf-btn cf-btn-ghost cf-btn-sm" @onclick="() => _showCreate = false" aria-label="Close">&#10005;</button>
+            </div>
+            <div class="cf-card-body">
+                @if (_createError is not null)
+                {
+                    <div class="cf-alert cf-alert-error" role="alert">@_createError</div>
+                }
+
+                <div class="cf-form-group">
+                    <label for="legalName" class="cf-form-label">Legal name <span class="required" aria-hidden="true">*</span></label>
+                    <input id="legalName" class="cf-input" @bind="_createModel.LegalName" required aria-required="true" />
+                </div>
+                <div class="cf-form-group">
+                    <label for="dbaName" class="cf-form-label">DBA name</label>
+                    <input id="dbaName" class="cf-input" @bind="_createModel.DbaName" />
+                </div>
+                <div class="cf-form-group">
+                    <label for="facilityType" class="cf-form-label">Facility type <span class="required" aria-hidden="true">*</span></label>
+                    <select id="facilityType" class="cf-select" @bind="_createModel.FacilityType">
+                        <option value="">Select type…</option>
+                        @foreach (var t in _facilityTypes)
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="cf-form-group">
+                    <label for="address" class="cf-form-label">Street address <span class="required" aria-hidden="true">*</span></label>
+                    <input id="address" class="cf-input" @bind="_createModel.Address" required aria-required="true" />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                    <div class="cf-form-group">
+                        <label for="city" class="cf-form-label">City <span class="required" aria-hidden="true">*</span></label>
+                        <input id="city" class="cf-input" @bind="_createModel.City" required aria-required="true" />
+                    </div>
+                    <div class="cf-form-group">
+                        <label for="zip" class="cf-form-label">ZIP <span class="required" aria-hidden="true">*</span></label>
+                        <input id="zip" class="cf-input" @bind="_createModel.ZipCode" required aria-required="true" />
+                    </div>
+                </div>
+                <div class="cf-form-group">
+                    <label for="county" class="cf-form-label">County <span class="required" aria-hidden="true">*</span></label>
+                    <input id="county" class="cf-input" @bind="_createModel.County" required aria-required="true" />
+                </div>
+
+                <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem">
+                    <button class="cf-btn cf-btn-outline" @onclick="() => _showCreate = false">Cancel</button>
+                    <button class="cf-btn cf-btn-primary" @onclick="CreateFacilityAsync" disabled="@_saving" aria-busy="@_saving">
+                        @if (_saving) { <span>Saving…</span> } else { <span>Save facility</span> }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _showCreate;
+    private bool _saving;
+    private string? _error, _createError;
+    private int _page = 1;
+    private PaginatedResult<FacilityDto>? _result;
+
+    private readonly string[] _facilityTypes = ["Manufacturing", "Retail", "Waste", "Water", "Air", "Other"];
+
+    private CreateFacilityModel _createModel = new();
+
+    private class CreateFacilityModel
+    {
+        public string LegalName { get; set; } = "";
+        public string? DbaName { get; set; }
+        public string FacilityType { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "OR";
+        public string ZipCode { get; set; } = "";
+        public string County { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _page = page;
+        _result = await Api.GetFacilitiesAsync(page);
+        _loading = false;
+    }
+
+    private async Task CreateFacilityAsync()
+    {
+        _saving = true;
+        _createError = null;
+
+        var req = new CreateFacilityRequest(
+            _createModel.LegalName, _createModel.DbaName, _createModel.FacilityType,
+            _createModel.Address, _createModel.City, _createModel.State,
+            _createModel.ZipCode, _createModel.County);
+
+        var (facility, error) = await Api.CreateFacilityAsync(req);
+        if (facility is not null)
+        {
+            _showCreate = false;
+            _createModel = new();
+            Nav.NavigateTo($"/facilities/{facility.Id}");
+        }
+        else
+        {
+            _createError = error;
+            _saving = false;
+        }
+    }
+}

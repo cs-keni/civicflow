@@ -1,0 +1,82 @@
+@page "/public/facilities/{Id:int}"
+@inject CivicFlowApiClient Api
+
+<PageTitle>@(_profile?.Facility?.LegalName ?? "Facility") — CivicFlow</PageTitle>
+
+@if (_loading)
+{
+    <div style="max-width:800px;margin:2rem auto;padding:0 1rem" role="status" aria-label="Loading">
+        <span class="cf-skeleton" style="height:2rem;width:50%;display:block;margin-bottom:1rem" />
+        <div class="cf-card"><div class="cf-card-body"><span class="cf-skeleton" style="height:8rem;display:block" /></div></div>
+    </div>
+}
+else if (_profile is null)
+{
+    <div class="cf-empty-state" style="padding:4rem"><h1>Facility not found</h1><a href="/public/search" class="cf-btn cf-btn-outline">Back to search</a></div>
+}
+else
+{
+    <div style="max-width:800px;margin:2rem auto;padding:0 1rem">
+        <div class="cf-page-header">
+            <div>
+                <h1>@_profile.Facility!.LegalName</h1>
+                <p class="cf-muted">@_profile.Facility.FacilityType · @_profile.Facility.Address, @_profile.Facility.City, @_profile.Facility.State</p>
+            </div>
+            @if (_profile.Facility.IsActive)
+            { <span class="cf-badge cf-badge-approved">Active</span> }
+            else
+            { <span class="cf-badge cf-badge-expired">Inactive</span> }
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+            <div class="cf-stat cf-card">
+                <div class="cf-stat-value">@_profile.ActivePermitsCount</div>
+                <div class="cf-stat-label">Active permits</div>
+            </div>
+            <div class="cf-stat cf-card">
+                <div class="cf-stat-value">@_profile.TotalInspectionsCount</div>
+                <div class="cf-stat-label">Inspections</div>
+            </div>
+            <div class="cf-stat cf-card">
+                <div class="cf-stat-value">@_profile.OpenViolationsCount</div>
+                <div class="cf-stat-label">Open violations</div>
+            </div>
+        </div>
+
+        @if (_profile.RecentInspections?.Count > 0)
+        {
+            <div class="cf-card" style="margin-bottom:1.5rem">
+                <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Recent Inspections</h2></div>
+                <table class="cf-table" aria-label="Recent inspections">
+                    <thead>
+                        <tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Rating</th><th scope="col">Summary</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var i in _profile.RecentInspections)
+                        {
+                            <tr>
+                                <td>@i.ScheduledDate.ToString("MMM d, yyyy")</td>
+                                <td>@i.InspectionType</td>
+                                <td>@(i.OverallRating ?? "—")</td>
+                                <td>@(i.PublicSummary ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private FacilityComplianceDto? _profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profile = await Api.GetFacilityComplianceAsync(Id);
+        _loading = false;
+    }
+}

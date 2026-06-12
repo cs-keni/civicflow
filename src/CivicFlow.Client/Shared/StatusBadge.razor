@@ -1,0 +1,9 @@
+@* Renders a color-coded status badge. Status is communicated via both color and text (WCAG 1.4.1). *@
+
+<span class="cf-badge cf-badge-@CssKey" aria-label="Status: @Status">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+
+    private string CssKey => (Status ?? "").ToLower().Replace(" ", "").Replace("_", "");
+}

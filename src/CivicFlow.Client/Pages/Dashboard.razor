@@ -1,0 +1,184 @@
+@page "/"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+
+<PageTitle>Dashboard — CivicFlow</PageTitle>
+
+<div class="cf-page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="cf-muted">Welcome back, <strong>@_userName</strong></p>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="cf-stats">
+        @for (int i = 0; i < 4; i++)
+        {
+            <div class="cf-stat">
+                <span class="cf-skeleton cf-skeleton-text narrow" style="height:2rem;margin-bottom:.5rem" />
+                <span class="cf-skeleton cf-skeleton-text medium" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="cf-stats" aria-label="Summary statistics">
+        <div class="cf-stat">
+            <div class="cf-stat-value">@_permitCount</div>
+            <div class="cf-stat-label">Total Permits</div>
+        </div>
+        <div class="cf-stat">
+            <div class="cf-stat-value">@_facilityCount</div>
+            <div class="cf-stat-label">Facilities</div>
+        </div>
+        <AuthorizeView Roles="AgencyStaff,Admin">
+            <div class="cf-stat">
+                <div class="cf-stat-value">@_inspectionCount</div>
+                <div class="cf-stat-label">Inspections</div>
+            </div>
+            <div class="cf-stat">
+                <div class="cf-stat-value">@_violationCount</div>
+                <div class="cf-stat-label">Open Violations</div>
+            </div>
+        </AuthorizeView>
+    </div>
+}
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:1.5rem">
+    <div class="cf-card">
+        <div class="cf-card-header">
+            <h2 style="margin:0;font-size:1rem">Recent Permits</h2>
+            <a href="/permits" class="cf-btn cf-btn-ghost cf-btn-sm">View all</a>
+        </div>
+        @if (_loading)
+        {
+            <div style="padding:.75rem 0">
+                <table class="cf-table" aria-label="Loading permits">
+                    <SkeletonRows Count="3" Columns="3" />
+                </table>
+            </div>
+        }
+        else if (_recentPermits is { Count: > 0 })
+        {
+            <table class="cf-table" aria-label="Recent permits">
+                <thead>
+                    <tr>
+                        <th scope="col">Number</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _recentPermits)
+                    {
+                        <tr>
+                            <td><a href="/permits/@p.Id">@p.ApplicationNumber</a></td>
+                            <td>@p.PermitType</td>
+                            <td><StatusBadge Status="@p.Status" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="cf-card-body cf-empty-state" style="padding:2rem">
+                <p>No permits yet.</p>
+                <a href="/permits/new" class="cf-btn cf-btn-primary cf-btn-sm">Apply for a permit</a>
+            </div>
+        }
+    </div>
+
+    <AuthorizeView Roles="AgencyStaff,Inspector,Admin">
+        <div class="cf-card">
+            <div class="cf-card-header">
+                <h2 style="margin:0;font-size:1rem">Upcoming Inspections</h2>
+                <a href="/inspections" class="cf-btn cf-btn-ghost cf-btn-sm">View all</a>
+            </div>
+            @if (_loading)
+            {
+                <div style="padding:.75rem 0">
+                    <table class="cf-table" aria-label="Loading inspections">
+                        <SkeletonRows Count="3" Columns="3" />
+                    </table>
+                </div>
+            }
+            else if (_recentInspections is { Count: > 0 })
+            {
+                <table class="cf-table" aria-label="Upcoming inspections">
+                    <thead>
+                        <tr>
+                            <th scope="col">Number</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var i in _recentInspections)
+                        {
+                            <tr>
+                                <td><a href="/inspections/@i.Id">@i.InspectionNumber</a></td>
+                                <td>@i.ScheduledDate.ToString("MMM d, yyyy")</td>
+                                <td><StatusBadge Status="@i.Status" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="cf-card-body cf-empty-state" style="padding:2rem">
+                    <p>No inspections scheduled.</p>
+                </div>
+            }
+        </div>
+    </AuthorizeView>
+</div>
+
+<div aria-live="polite" aria-atomic="true" class="visually-hidden" id="status-updates">
+    @_statusMessage
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool _loading = true;
+    private string _userName = "";
+    private string? _statusMessage;
+    private int _permitCount, _facilityCount, _inspectionCount, _violationCount;
+    private List<PermitApplicationSummaryDto> _recentPermits = [];
+    private List<InspectionSummaryDto> _recentInspections = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var auth = await AuthState;
+            _userName = auth.User.Identity?.Name ?? "User";
+        }
+
+        var permitsTask = Api.GetPermitsAsync(1, 5);
+        var facilitiesTask = Api.GetFacilitiesAsync(1, 1);
+        var inspectionsTask = Api.GetInspectionsAsync(1, 5);
+        var violationsTask = Api.GetViolationsAsync(1, 1);
+
+        await Task.WhenAll(permitsTask, facilitiesTask, inspectionsTask, violationsTask);
+
+        var permits = await permitsTask;
+        var facilities = await facilitiesTask;
+        var inspections = await inspectionsTask;
+        var violations = await violationsTask;
+
+        _permitCount = permits?.TotalCount ?? 0;
+        _facilityCount = facilities?.TotalCount ?? 0;
+        _inspectionCount = inspections?.TotalCount ?? 0;
+        _violationCount = violations?.TotalCount ?? 0;
+        _recentPermits = permits?.Items ?? [];
+        _recentInspections = inspections?.Items ?? [];
+
+        _loading = false;
+    }
+}

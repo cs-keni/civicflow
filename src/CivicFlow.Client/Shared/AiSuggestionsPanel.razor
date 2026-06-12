@@ -1,0 +1,41 @@
+@* AI suggestions panel with animated skeleton while loading, graceful degradation when unavailable. *@
+
+@if (Loading)
+{
+    <div class="cf-ai-panel" role="status" aria-label="AI validation loading" aria-live="polite">
+        <div class="cf-ai-panel-header">
+            <span aria-hidden="true">&#128161;</span> AI Review — loading…
+        </div>
+        <span class="cf-skeleton cf-skeleton-text wide" style="margin-bottom:.5rem" />
+        <span class="cf-skeleton cf-skeleton-text medium" style="margin-bottom:.5rem" />
+        <span class="cf-skeleton cf-skeleton-text narrow" />
+    </div>
+}
+else if (Suggestions is { Count: > 0 })
+{
+    <div class="cf-ai-panel" role="region" aria-label="AI suggestions" aria-live="polite">
+        <div class="cf-ai-panel-header">
+            <span aria-hidden="true">&#128161;</span> AI Review Suggestions
+        </div>
+        @foreach (var s in Suggestions)
+        {
+            <div class="cf-ai-suggestion">
+                <span aria-hidden="true">&#9656;</span>
+                <span>@s</span>
+            </div>
+        }
+    </div>
+}
+else if (ShowUnavailable)
+{
+    <div class="cf-ai-panel" role="status" aria-live="polite">
+        <div class="cf-ai-panel-header"><span aria-hidden="true">&#128161;</span> AI Review</div>
+        <p class="cf-ai-unavailable">Suggestions temporarily unavailable. Please review your submission manually.</p>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public List<string>? Suggestions { get; set; }
+    [Parameter] public bool ShowUnavailable { get; set; }
+}

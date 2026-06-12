@@ -1,0 +1,241 @@
+@page "/permits/{Id:int}"
+@attribute [Authorize]
+@inject CivicFlowApiClient Api
+
+<PageTitle>@(_permit?.ApplicationNumber ?? "Permit") — CivicFlow</PageTitle>
+
+@if (_loading)
+{
+    <div role="status" aria-label="Loading permit">
+        <span class="cf-skeleton" style="height:2rem;width:40%;display:block;margin-bottom:1rem" />
+        <div class="cf-card"><div class="cf-card-body"><span class="cf-skeleton" style="height:6rem;display:block" /></div></div>
+    </div>
+}
+else if (_permit is null)
+{
+    <div class="cf-empty-state"><h1>Permit not found</h1><a href="/permits" class="cf-btn cf-btn-outline">Back to permits</a></div>
+}
+else
+{
+    <div class="cf-page-header">
+        <div>
+            <h1>@_permit.ApplicationNumber</h1>
+            <p class="cf-muted">@_permit.FacilityName · @_permit.PermitType</p>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center">
+            <StatusBadge Status="@_permit.Status" />
+            @if (_permit.Status == "Draft")
+            {
+                <button class="cf-btn cf-btn-primary" @onclick="SubmitAsync" disabled="@_actioning" aria-busy="@_actioning">
+                    @if (_actioning) { <span>Submitting…</span> } else { <span>Submit</span> }
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (_actionError is not null)
+    {
+        <div class="cf-alert cf-alert-error" role="alert">@_actionError</div>
+    }
+    @if (_actionSuccess is not null)
+    {
+        <div class="cf-alert cf-alert-success" role="status">@_actionSuccess</div>
+    }
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem;margin-bottom:1.5rem">
+        <div class="cf-card">
+            <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Application Details</h2></div>
+            <div class="cf-card-body cf-detail-grid">
+                <div><div class="cf-detail-label">Status</div><div class="cf-detail-value"><StatusBadge Status="@_permit.Status" /></div></div>
+                <div><div class="cf-detail-label">Type</div><div class="cf-detail-value">@_permit.PermitType</div></div>
+                <div><div class="cf-detail-label">Submitted</div><div class="cf-detail-value">@(_permit.SubmittedAt?.ToString("MMM d, yyyy") ?? "Not submitted")</div></div>
+                @if (_permit.ApprovedAt is not null)
+                {
+                    <div><div class="cf-detail-label">Approved</div><div class="cf-detail-value">@_permit.ApprovedAt.Value.ToString("MMM d, yyyy")</div></div>
+                }
+                @if (_permit.ExpiresAt is not null)
+                {
+                    <div><div class="cf-detail-label">Expires</div><div class="cf-detail-value">@_permit.ExpiresAt.Value.ToString("MMM d, yyyy")</div></div>
+                }
+                @if (_permit.AssignedStaffId is not null)
+                {
+                    <div><div class="cf-detail-label">Assigned to</div><div class="cf-detail-value cf-mono">@_permit.AssignedStaffId[..8]…</div></div>
+                }
+            </div>
+            <div style="padding:1rem;border-top:1px solid var(--cf-border)">
+                <div class="cf-detail-label" style="margin-bottom:.5rem">Description</div>
+                <p style="margin:0">@_permit.Description</p>
+            </div>
+        </div>
+
+        <AuthorizeView Roles="AgencyStaff,Admin">
+            <div class="cf-card">
+                <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Review Actions</h2></div>
+                <div class="cf-card-body">
+                    @if (_permit.Status == "Submitted" || _permit.Status == "Under Review")
+                    {
+                        <div class="cf-form-group">
+                            <label for="reviewNotes" class="cf-form-label">Review notes</label>
+                            <textarea id="reviewNotes" class="cf-textarea" rows="3" @bind="_reviewNotes" placeholder="Optional notes…" />
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:.5rem">
+                            <button class="cf-btn cf-btn-success" @onclick="ApproveAsync" disabled="@_actioning">Approve</button>
+                            <button class="cf-btn cf-btn-danger" @onclick="DenyAsync" disabled="@_actioning">Deny</button>
+                            <button class="cf-btn cf-btn-outline" @onclick="RequestChangesAsync" disabled="@_actioning">Request changes</button>
+                        </div>
+                    }
+                    else if (_permit.Status == "Draft" || _permit.Status == "Changes Requested")
+                    {
+                        <p class="cf-muted" style="font-size:.875rem">Awaiting applicant submission.</p>
+                    }
+                    else
+                    {
+                        <p class="cf-muted" style="font-size:.875rem">No review actions available for <strong>@_permit.Status</strong> permits.</p>
+                    }
+                </div>
+            </div>
+        </AuthorizeView>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem">
+        <div class="cf-card">
+            <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Status History</h2></div>
+            @if (_history?.Count > 0)
+            {
+                <div style="padding:.5rem 0">
+                    @foreach (var h in _history)
+                    {
+                        <div style="display:flex;gap:.75rem;padding:.5rem 1rem;border-bottom:1px solid var(--cf-border)">
+                            <div style="flex:0 0 auto;padding-top:.15rem"><StatusBadge Status="@h.ToStatus" /></div>
+                            <div style="flex:1;min-width:0">
+                                @if (!string.IsNullOrEmpty(h.Notes))
+                                {
+                                    <p style="margin:0 0 .25rem;font-size:.875rem">@h.Notes</p>
+                                }
+                                <p style="margin:0;font-size:.8rem;color:var(--cf-text-muted)">
+                                    @h.ChangedAt.ToString("MMM d, yyyy h:mm tt") · @(h.ChangedByName ?? h.ChangedById[..8])
+                                </p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="cf-card-body cf-empty-state"><p>No history yet.</p></div>
+            }
+        </div>
+
+        <div class="cf-card">
+            <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Review Comments</h2></div>
+            @if (_permit.Comments?.Count > 0)
+            {
+                <div style="padding:.5rem 0">
+                    @foreach (var c in _permit.Comments)
+                    {
+                        <div style="padding:.75rem 1rem;border-bottom:1px solid var(--cf-border)">
+                            <p style="margin:0 0 .25rem">@c.Content</p>
+                            <p style="margin:0;font-size:.8rem;color:var(--cf-text-muted)">
+                                @c.CreatedAt.ToString("MMM d, yyyy") · @(c.AuthorName ?? c.AuthorId[..8])
+                                @if (!c.IsInternal) { <span> · Public</span> }
+                            </p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="cf-card-body cf-empty-state"><p>No comments yet.</p></div>
+            }
+
+            <AuthorizeView Roles="AgencyStaff,Admin">
+                <div style="padding:1rem;border-top:1px solid var(--cf-border)">
+                    <div class="cf-form-group">
+                        <label for="newComment" class="cf-form-label">Add comment</label>
+                        <textarea id="newComment" class="cf-textarea" rows="2" @bind="_newComment" />
+                    </div>
+                    <div style="display:flex;gap:.75rem;align-items:center;margin-top:.5rem">
+                        <label style="display:flex;gap:.5rem;align-items:center;font-size:.875rem">
+                            <input type="checkbox" @bind="_commentIsPublic" /> Visible to applicant
+                        </label>
+                        <button class="cf-btn cf-btn-primary cf-btn-sm" @onclick="AddCommentAsync"
+                                disabled="@(string.IsNullOrWhiteSpace(_newComment) || _actioning)">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </AuthorizeView>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private bool _actioning;
+    private string? _actionError, _actionSuccess;
+    private string _reviewNotes = "";
+    private string _newComment = "";
+    private bool _commentIsPublic;
+
+    private PermitApplicationDto? _permit;
+    private List<PermitStatusHistoryDto>? _history;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var permitTask = Api.GetPermitAsync(Id);
+        var historyTask = Api.GetPermitStatusHistoryAsync(Id);
+        await Task.WhenAll(permitTask, historyTask);
+        _permit = await permitTask;
+        _history = await historyTask;
+        _loading = false;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _actioning = true;
+        _actionError = null;
+        var (_, error) = await Api.SubmitPermitAsync(Id);
+        if (error is not null) _actionError = error;
+        else { _actionSuccess = "Application submitted successfully."; await LoadAsync(); }
+        _actioning = false;
+    }
+
+    private Task ApproveAsync() => ReviewAsync("approve");
+    private Task DenyAsync() => ReviewAsync("deny");
+    private Task RequestChangesAsync() => ReviewAsync("request-changes");
+
+    private async Task ReviewAsync(string action)
+    {
+        _actioning = true;
+        _actionError = null;
+        var req = new ReviewActionRequest(_reviewNotes.Length > 0 ? _reviewNotes : null);
+        (_, string? error) = action switch
+        {
+            "approve" => await Api.ApprovePermitAsync(Id, req),
+            "deny" => await Api.DenyPermitAsync(Id, req),
+            "request-changes" => await Api.RequestChangesPermitAsync(Id, req),
+            _ => (null, "Unknown action")
+        };
+        if (error is not null) _actionError = error;
+        else { _actionSuccess = $"Permit {action} action applied."; _reviewNotes = ""; await LoadAsync(); }
+        _actioning = false;
+    }
+
+    private async Task AddCommentAsync()
+    {
+        _actioning = true;
+        _actionError = null;
+        var req = new CreateReviewCommentRequest(_newComment, _commentIsPublic);
+        var (_, error) = await Api.AddPermitCommentAsync(Id, req);
+        if (error is not null) _actionError = error;
+        else { _newComment = ""; await LoadAsync(); }
+        _actioning = false;
+    }
+}

@@ -1,16 +1,17 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
+@inherits LayoutComponentBase
+
+<a href="#main-content" class="cf-skip-link">Skip to main content</a>
+
+<div class="cf-layout">
+    <aside class="cf-sidebar" aria-label="Main navigation">
         <NavMenu />
-    </div>
+    </aside>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+    <div class="cf-main">
+        <TopBar />
 
-        <article class="content px-4">
+        <main id="main-content" class="cf-content" tabindex="-1">
             @Body
-        </article>
-    </main>
+        </main>
+    </div>
 </div>
