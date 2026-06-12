@@ -42,9 +42,18 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 - [ ] Wire project references (API → Application → Domain, API → Infrastructure, API → Client)
 - [ ] Install core NuGet packages:
   - `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.EntityFrameworkCore.Tools`
+  - `Microsoft.EntityFrameworkCore.InMemory` (required for SwaggerGen CI guard — see below)
   - `Swashbuckle.AspNetCore`, `Serilog.AspNetCore`, `Serilog.Sinks.Console`
   - `FluentValidation.AspNetCore`, `Microsoft.AspNetCore.SignalR`
   - `Anthropic.SDK` (Anthropic .NET SDK)
+- [ ] Set up local .NET tool manifest for Swashbuckle CLI:
+  - `dotnet new tool-manifest` (creates `.config/dotnet-tools.json`)
+  - `dotnet tool install Swashbuckle.AspNetCore.Cli` (pinned in manifest)
+  - CI must run `dotnet tool restore` after NuGet restore
+- [ ] Add `ASPNETCORE_ENVIRONMENT=SwaggerGen` guard in `Program.cs`:
+  - When `EnvironmentName == "SwaggerGen"`: register DbContext with `UseInMemoryDatabase("SwaggerGen")` instead of SQL Server
+  - Also skip `AddHealthChecks().AddDbContextCheck<CivicFlowDbContext>()` and any other DB-dependent hosted services when in SwaggerGen mode
+  - Pattern: `if (builder.Environment.EnvironmentName != "SwaggerGen") { /* SQL Server + health checks */ } else { /* InMemory only */ }`
 - [ ] Configure Docker Compose with SQL Server (single `api` service hosting WASM + API; `db` service)
 - [ ] Configure Serilog structured logging in Program.cs
 - [ ] Configure Swagger/OpenAPI with JWT/cookie auth headers
@@ -186,11 +195,13 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
   - `api` service: API + WASM, port 5000, ANTHROPIC_API_KEY + AI_PROVIDER env vars
   - `db` service: SQL Server 2022, SA_PASSWORD, volume mount
 - [ ] Create `.env.example` with all required environment variables documented
-- [ ] Write `.github/workflows/ci.yml`:
-  - Restore NuGet, build solution, run unit tests, run integration tests (SQL Server service container)
-  - Build Docker image
-  - Matrix: AI_PROVIDER=mock (always), + optional AI_PROVIDER=real connectivity check (see TODO-3)
-- [ ] Export Swagger JSON: `dotnet swagger tofile docs/swagger.json` (see TODO-2)
+- [ ] Write `.github/workflows/ci.yml` with two AI jobs (NOT a matrix — matrix include entries always run):
+  - Restore NuGet (`dotnet restore` + `dotnet tool restore`), build solution, run unit tests, run integration tests (SQL Server service container), build Docker image
+  - Job `test-mock` (always-on, runs on every push/PR): `AI_PROVIDER=mock` — full integration test suite
+  - Job `test-real-ai` (manual + guarded): `if: github.event_name == 'workflow_dispatch' && secrets.ANTHROPIC_API_KEY != ''` — runs a single targeted ClaudeAIService connectivity check only (NOT the full test suite); 1-2 API calls, <30 seconds, verifies API key validity and endpoint reachability
+- [ ] Export Swagger JSON (add as step in CI after `dotnet build -c Release`, with `ASPNETCORE_ENVIRONMENT=SwaggerGen`):
+  - `dotnet tool restore`
+  - `dotnet swagger tofile --output docs/swagger.json bin/Release/net8.0/CivicFlow.API.dll v1` (with `ASPNETCORE_ENVIRONMENT=SwaggerGen` set for this step only)
 - [ ] Write Azure deployment guide in README (App Service + Azure SQL + Key Vault)
 - [ ] Create architecture diagram in README (Mermaid or ASCII)
 
@@ -241,12 +252,12 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAR (PLAN) | 6 proposals, 2 accepted, 4 deferred; 10 tasks; 0 critical gaps |
-| Outside Voice | `/plan-ceo-review` | Independent 2nd opinion | 2 | issues_found | Codex: 19 findings, 3 cross-model tensions resolved (CSRF, AuditLog layer, demo script) |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 13 issues found, all resolved via D2–D15 decisions |
+| Outside Voice | `/plan-ceo-review` + `/plan-eng-review` | Independent 2nd opinion | 3 | issues_found | Run 1: 19 findings, 3 tensions resolved; Run 2+3: 5 new tensions resolved (Swagger CLI, InMemory pkg, guard scope, test-real-ai scope, swagger command) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 2 | CLEAR (PLAN) | Run 1: 13 issues, all resolved; Run 2: 9 issues (cherry-picks D3.4/D3.5), all resolved |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
-**CROSS-MODEL:** Codex outside voice (19 findings) — 3 tensions resolved: CSRF kept SameSite=Strict; AuditLog kept D4 middleware; demo script added to Phase 3. Cross-model agreement on all architecture decisions post-resolution.
-**VERDICT:** CEO + ENG CLEARED — spec reconciled, 10 implementation tasks surfaced and resolved, 0 critical gaps. Ready to implement Phase 0.
+**CROSS-MODEL:** Codex outside voices (3 runs total) — resolved: CSRF SameSite=Strict; AuditLog D4 middleware; demo script; Swagger CLI tool manifest; EF InMemory package; SwaggerGen guard scope; test-real-ai minimal smoke test; swagger tofile full command. Cross-model agreement on all architecture decisions post-resolution.
+**VERDICT:** CEO + ENG CLEARED — D3.4 (Swagger CI) and D3.5 (AI matrix CI) cherry-picks validated, 9 implementation tasks surfaced and resolved, 0 critical gaps. Ready to implement Phase 0.
 
 NO UNRESOLVED DECISIONS
