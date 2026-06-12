@@ -3,6 +3,15 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace CivicFlow.API.Hubs;
 
-// Phase 4 (TODO-7): real-time inspection assignment + status updates for Inspector role.
-[Authorize(Roles = "Inspector,Staff,Admin")]
-public class InspectionHub : Hub { }
+[Authorize(Roles = "Inspector,AgencyStaff,Admin")]
+public class InspectionHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.UserIdentifier;
+        if (userId is not null)
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"inspector-{userId}");
+
+        await base.OnConnectedAsync();
+    }
+}

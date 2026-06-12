@@ -2,6 +2,8 @@
 @attribute [Authorize(Roles = "AgencyStaff,Inspector,Admin")]
 @inject CivicFlowApiClient Api
 @inject NavigationManager Nav
+@inject HubConnectionService Hubs
+@implements IAsyncDisposable
 
 <PageTitle>Inspections — CivicFlow</PageTitle>
 
@@ -9,6 +11,8 @@
     <h1>Inspections</h1>
     <a href="/inspections/schedule" class="cf-btn cf-btn-primary">+ Schedule inspection</a>
 </div>
+
+<div aria-live="polite" aria-atomic="true" class="visually-hidden">@_statusMessage</div>
 
 <div class="cf-table-wrapper">
     <table class="cf-table" aria-label="Inspections list">
@@ -62,9 +66,15 @@
 @code {
     private bool _loading = true;
     private int _page = 1;
+    private string? _statusMessage;
     private PaginatedResult<InspectionSummaryDto>? _result;
 
-    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+    protected override async Task OnInitializedAsync()
+    {
+        Hubs.OnInspectionScheduled += HandleInspectionScheduled;
+        await Hubs.ConnectInspectionHubAsync();
+        await LoadPageAsync(1);
+    }
 
     private async Task LoadPageAsync(int page)
     {
@@ -72,5 +82,17 @@
         _page = page;
         _result = await Api.GetInspectionsAsync(page);
         _loading = false;
+    }
+
+    private void HandleInspectionScheduled(InspectionScheduledEvent e)
+    {
+        _statusMessage = $"New inspection scheduled: {e.InspectionNumber} at {e.FacilityName} on {e.ScheduledDate:MMM d, yyyy}";
+        _ = InvokeAsync(async () => { await LoadPageAsync(_page); StateHasChanged(); });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hubs.OnInspectionScheduled -= HandleInspectionScheduled;
+        await Hubs.DisposeAsync();
     }
 }

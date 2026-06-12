@@ -3,6 +3,12 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace CivicFlow.API.Hubs;
 
-// Phase 4 (TODO-7): real-time review queue updates for Staff role.
-[Authorize(Roles = "Staff,Admin")]
-public class ReviewQueueHub : Hub { }
+[Authorize(Roles = "AgencyStaff,Admin")]
+public class ReviewQueueHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "staff-reviewers");
+        await base.OnConnectedAsync();
+    }
+}

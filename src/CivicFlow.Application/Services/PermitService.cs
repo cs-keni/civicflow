@@ -10,7 +10,8 @@ public class PermitService(
     IPermitRepository permitRepo,
     IFacilityRepository facilityRepo,
     IReviewCommentRepository commentRepo,
-    ICurrentUserService currentUser) : IPermitService
+    ICurrentUserService currentUser,
+    IRealtimeNotifier notifier) : IPermitService
 {
     public async Task<PaginatedResult<PermitApplicationSummaryDto>> GetPermitsAsync(int page, int pageSize)
     {
@@ -90,7 +91,14 @@ public class PermitService(
         if (permit is null || permit.ApplicantId != currentUser.UserId) return null;
         if (permit.Status != PermitStatus.Draft && permit.Status != PermitStatus.ChangesRequested) return null;
 
-        return await TransitionStatusAsync(permit, PermitStatus.Submitted, currentUser.UserId!, null);
+        var facility = await facilityRepo.GetByIdAsync(permit.FacilityId);
+        var dto = await TransitionStatusAsync(permit, PermitStatus.Submitted, currentUser.UserId!, null);
+        if (dto is not null)
+        {
+            notifier.NotifyPermitSubmitted(permit.Id, permit.ApplicationNumber, facility?.LegalName ?? "", permit.ApplicantId);
+            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Submit", $"{permit.ApplicationNumber} submitted by applicant");
+        }
+        return dto;
     }
 
     public async Task<PermitApplicationDto?> AssignStaffAsync(int id, string staffId)
@@ -118,7 +126,13 @@ public class PermitService(
         permit.ApprovedAt = DateTime.UtcNow;
         permit.ReviewedAt = DateTime.UtcNow;
         permit.ExpiresAt = DateTime.UtcNow.AddYears(2);
-        return await TransitionStatusAsync(permit, PermitStatus.Approved, currentUser.UserId!, notes);
+        var dto = await TransitionStatusAsync(permit, PermitStatus.Approved, currentUser.UserId!, notes);
+        if (dto is not null)
+        {
+            notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Approved", permit.ApplicantId);
+            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Approve", $"{permit.ApplicationNumber} approved");
+        }
+        return dto;
     }
 
     public async Task<PermitApplicationDto?> DenyAsync(int id, string? notes)
@@ -128,7 +142,13 @@ public class PermitService(
         if (permit is null || permit.Status != PermitStatus.UnderReview) return null;
 
         permit.ReviewedAt = DateTime.UtcNow;
-        return await TransitionStatusAsync(permit, PermitStatus.Denied, currentUser.UserId!, notes);
+        var dto = await TransitionStatusAsync(permit, PermitStatus.Denied, currentUser.UserId!, notes);
+        if (dto is not null)
+        {
+            notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Denied", permit.ApplicantId);
+            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Deny", $"{permit.ApplicationNumber} denied");
+        }
+        return dto;
     }
 
     public async Task<PermitApplicationDto?> RequestChangesAsync(int id, string? notes)
@@ -138,7 +158,13 @@ public class PermitService(
         if (permit is null || permit.Status != PermitStatus.UnderReview) return null;
 
         permit.ReviewedAt = DateTime.UtcNow;
-        return await TransitionStatusAsync(permit, PermitStatus.ChangesRequested, currentUser.UserId!, notes);
+        var dto = await TransitionStatusAsync(permit, PermitStatus.ChangesRequested, currentUser.UserId!, notes);
+        if (dto is not null)
+        {
+            notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Changes Requested", permit.ApplicantId);
+            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "RequestChanges", $"{permit.ApplicationNumber} — changes requested");
+        }
+        return dto;
     }
 
     public async Task<List<ReviewCommentDto>> GetCommentsAsync(int permitId)

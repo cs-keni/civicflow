@@ -40,6 +40,9 @@ public static class ServiceRegistration
         services.AddScoped<IPermitAIService, StubPermitAIService>();
         services.AddScoped<IInspectionAIService, StubInspectionAIService>();
 
+        // Real-time notifier — null fallback; overridden in Program.cs with SignalRNotifier
+        services.AddScoped<IRealtimeNotifier, NullRealtimeNotifier>();
+
         return services;
     }
 }

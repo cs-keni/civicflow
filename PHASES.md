@@ -152,22 +152,24 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 4 — SignalR Real-Time
+## Phase 4 — SignalR Real-Time ✅
 
-- [ ] Implement 4 SignalR hubs in CivicFlow.API/Hubs/:
+- [x] Implement 4 SignalR hubs in CivicFlow.API/Hubs/:
   - PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub
-- [ ] Configure hub auth: [Authorize] on hub classes, cookie-based (withCredentials on client)
-- [ ] Implement client group assignment on connect:
+- [x] Configure hub auth: [Authorize] on hub classes, cookie-based (withCredentials on client)
+- [x] Implement client group assignment on connect:
   - `applicant-{userId}`, `staff-reviewers`, `inspector-{userId}`, `admin-feed`
-- [ ] Wire hub sends in service layer as fire-and-forget (no await):
+- [x] Wire hub sends in service layer as fire-and-forget (no await):
   - `_ = _hubContext.Clients.Group(...).SendAsync(...)` with `.ContinueWith(t => _logger.LogError(...))` on failure
-- [ ] Connect Blazor WASM clients to hubs (HubConnectionBuilder, withCredentials)
-- [ ] Wire permit status changes → applicant-{userId} group
-- [ ] Wire new application submitted → staff-reviewers group (review queue live update)
-- [ ] Wire inspection scheduled → inspector-{userId} group
-- [ ] Wire all activity → admin-feed group
-- [ ] Take screenshots of real-time update (two browser tabs open simultaneously)
-- [ ] Test multi-client updates manually in browser
+- [x] IRealtimeNotifier interface in Application layer (NullRealtimeNotifier in Infrastructure, SignalRNotifier override in API)
+- [x] Connect Blazor WASM clients to hubs (HubConnectionBuilder, cookie auth same-origin)
+- [x] Wire permit status changes → applicant-{userId} group
+- [x] Wire new application submitted → staff-reviewers group (review queue live update)
+- [x] Wire inspection scheduled → inspector-{userId} group
+- [x] Wire all activity → admin-feed group
+- [x] aria-live="polite" regions on Dashboard, ReviewQueue, InspectionList
+- [ ] Take screenshots of real-time update (deferred to Phase 8 — needs running DB)
+- [ ] Test multi-client updates manually in browser (deferred to Phase 8)
 
 ---
 

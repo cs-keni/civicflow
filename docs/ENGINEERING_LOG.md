@@ -4,6 +4,40 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 4: SignalR Real-Time
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Commit**: (see git log)
+
+### Changes
+
+- `CivicFlow.Application/Interfaces/IRealtimeNotifier.cs` — New interface defining 4 fire-and-forget notification methods. Application layer owns the interface; no SignalR dep here.
+- `CivicFlow.Infrastructure/Services/NullRealtimeNotifier.cs` — No-op implementation registered as default by `AddInfrastructure()`.
+- `CivicFlow.Infrastructure/ServiceRegistration.cs` — `AddScoped<IRealtimeNotifier, NullRealtimeNotifier>()`.
+- `CivicFlow.Application/Services/PermitService.cs` — Injected `IRealtimeNotifier`; wired `NotifyPermitSubmitted` on submit, `NotifyPermitStatusChanged` on approve/deny/request-changes, `NotifyAdminActivity` on all.
+- `CivicFlow.Application/Services/InspectionService.cs` — Injected `IRealtimeNotifier`; wired `NotifyInspectionScheduled` on create, `NotifyAdminActivity` on complete.
+- `CivicFlow.API/Hubs/PermitStatusHub.cs` — Full hub: on connect assigns to `applicant-{userId}`, `staff-reviewers` (staff/admin), `inspector-{userId}` (inspector/staff/admin), `admin-feed` (admin).
+- `CivicFlow.API/Hubs/ReviewQueueHub.cs` — `[Authorize(Roles="AgencyStaff,Admin")]`; adds to `staff-reviewers`.
+- `CivicFlow.API/Hubs/InspectionHub.cs` — `[Authorize(Roles="Inspector,AgencyStaff,Admin")]`; adds to `inspector-{userId}`.
+- `CivicFlow.API/Hubs/AdminActivityHub.cs` — `[Authorize(Roles="Admin")]`; adds to `admin-feed`.
+- `CivicFlow.API/Services/SignalRNotifier.cs` — `IRealtimeNotifier` implementation using all 4 `IHubContext<T>`. All sends are fire-and-forget via `ContinueWith(OnlyOnFaulted)` — hub failures never propagate to HTTP responses.
+- `CivicFlow.API/Program.cs` — Added `AddSignalR()` override: `AddScoped<IRealtimeNotifier, SignalRNotifier>()` (replaces NullRealtimeNotifier). Hub endpoints mapped.
+- `CivicFlow.Client/Services/HubConnectionService.cs` — Singleton-like service managing 4 `HubConnection` instances. `BuildConnection` uses `WithUrl(nav.ToAbsoluteUri(path)).WithAutomaticReconnect()`. `SafeStartAsync` swallows exceptions (graceful degradation). Typed event callbacks.
+- `CivicFlow.Client/Program.cs` — `AddScoped<HubConnectionService>()`.
+- `CivicFlow.Client/Pages/Dashboard.razor` — Wired to ReviewQueueHub (staff/admin) or PermitStatusHub (applicant); `aria-live="polite"` region for `_statusMessage`.
+- `CivicFlow.Client/Pages/ReviewQueue.razor` — Wired to ReviewQueueHub; aria-live region; reloads list on new submission. Fixed missing `}` closing `@code` block.
+- `CivicFlow.Client/Pages/Inspections/InspectionList.razor` — Wired to InspectionHub; aria-live region; reloads list on new scheduled inspection.
+- Build: **0 errors, 2 benign CS0649 warnings (unread `_error` fields in markup)** | Tests: **43 passed, 0 failed**
+
+### Key decisions
+
+- `IRealtimeNotifier` interface in Application layer, `NullRealtimeNotifier` in Infrastructure (default), `SignalRNotifier` override registered in API after `AddSignalR()`. Clean architecture preserved — services have zero SignalR imports.
+- Fire-and-forget pattern: `_ = hubContext.Clients.Group(...).SendAsync(...).ContinueWith(t => logger.LogError(...), OnlyOnFaulted)`. Hub failures never propagate.
+- Blazor WASM SignalR: same-origin BFF cookie auth — browser sends HttpOnly cookie automatically. No `WithCredentials` option needed in `HubConnectionBuilder` for same-origin.
+- `HubConnectionService.DisposeAsync()` checks for null before disposing each connection — safe if `Connect*Async` was never called.
+
+---
+
 ## 2026-06-12 — Phase 3: Blazor WASM Frontend
 
 **Agent**: Claude Code (claude-sonnet-4-6)

@@ -1,19 +1,35 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace CivicFlow.API.Hubs;
 
-// Phase 4 (TODO-7): real-time permit status updates for Applicant + Staff roles.
-// Fire-and-forget sends from controllers/services (D12).
-// Cookie auth via withCredentials on the WASM client (D13).
 [Authorize]
 public class PermitStatusHub : Hub
 {
     public override async Task OnConnectedAsync()
     {
         var userId = Context.UserIdentifier;
-        if (userId is not null)
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+        if (userId is null)
+        {
+            await base.OnConnectedAsync();
+            return;
+        }
+
+        // Every authenticated user subscribes to their personal feed
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"applicant-{userId}");
+
+        // Role-based group membership
+        var user = Context.User!;
+        if (user.IsInRole("AgencyStaff") || user.IsInRole("Admin"))
+            await Groups.AddToGroupAsync(Context.ConnectionId, "staff-reviewers");
+
+        if (user.IsInRole("Inspector") || user.IsInRole("AgencyStaff") || user.IsInRole("Admin"))
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"inspector-{userId}");
+
+        if (user.IsInRole("Admin"))
+            await Groups.AddToGroupAsync(Context.ConnectionId, "admin-feed");
+
         await base.OnConnectedAsync();
     }
 }

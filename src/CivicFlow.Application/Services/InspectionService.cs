@@ -10,7 +10,8 @@ public class InspectionService(
     IInspectionRepository inspectionRepo,
     IFacilityRepository facilityRepo,
     IPermitRepository permitRepo,
-    ICurrentUserService currentUser) : IInspectionService
+    ICurrentUserService currentUser,
+    IRealtimeNotifier notifier) : IInspectionService
 {
     public async Task<PaginatedResult<InspectionSummaryDto>> GetInspectionsAsync(int page, int pageSize)
     {
@@ -69,7 +70,12 @@ public class InspectionService(
 
         var facility = await facilityRepo.GetByIdAsync(created.FacilityId);
         var permit = await permitRepo.GetByIdAsync(created.PermitApplicationId);
-        return ToDetailDto(created, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
+        var dto = ToDetailDto(created, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
+
+        notifier.NotifyInspectionScheduled(created.Id, created.InspectionNumber, facility?.LegalName ?? "", created.InspectorId, created.ScheduledDate);
+        notifier.NotifyAdminActivity("Inspection", created.Id.ToString(), "Schedule", $"{created.InspectionNumber} scheduled for {created.ScheduledDate:MMM d, yyyy}");
+
+        return dto;
     }
 
     public async Task<InspectionDto?> CompleteInspectionAsync(int id, CompleteInspectionRequest request)
@@ -87,7 +93,11 @@ public class InspectionService(
 
         var facility = await facilityRepo.GetByIdAsync(inspection.FacilityId);
         var permit = await permitRepo.GetByIdAsync(inspection.PermitApplicationId);
-        return ToDetailDto(inspection, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
+        var dto = ToDetailDto(inspection, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
+
+        notifier.NotifyAdminActivity("Inspection", inspection.Id.ToString(), "Complete", $"{inspection.InspectionNumber} marked complete — {request.OverallRating}");
+
+        return dto;
     }
 
     public async Task<InspectionDto?> UpdatePublicSummaryAsync(int id, string publicSummary)

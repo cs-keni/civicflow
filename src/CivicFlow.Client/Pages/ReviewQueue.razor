@@ -2,6 +2,8 @@
 @attribute [Authorize(Roles = "AgencyStaff,Admin")]
 @inject CivicFlowApiClient Api
 @inject NavigationManager Nav
+@inject HubConnectionService Hubs
+@implements IAsyncDisposable
 
 <PageTitle>Review Queue — CivicFlow</PageTitle>
 
@@ -9,6 +11,8 @@
     <h1>Review Queue</h1>
     <span class="cf-badge cf-badge-underreview" aria-label="@(_pending?.TotalCount ?? 0) pending">@(_pending?.TotalCount ?? 0) pending</span>
 </div>
+
+<div aria-live="polite" aria-atomic="true" class="visually-hidden">@_statusMessage</div>
 
 <div class="cf-table-wrapper">
     <table class="cf-table" aria-label="Permit applications pending review">
@@ -68,9 +72,15 @@
 @code {
     private bool _loading = true;
     private int _page = 1;
+    private string? _statusMessage;
     private PaginatedResult<PermitApplicationSummaryDto>? _pending;
 
-    protected override async Task OnInitializedAsync() => await LoadPageAsync(1);
+    protected override async Task OnInitializedAsync()
+    {
+        Hubs.OnQueueUpdated += HandleNewSubmission;
+        await Hubs.ConnectReviewQueueHubAsync();
+        await LoadPageAsync(1);
+    }
 
     private async Task LoadPageAsync(int page)
     {
@@ -78,5 +88,17 @@
         _page = page;
         _pending = await Api.GetPermitsAsync(page, 20);
         _loading = false;
+    }
+
+    private void HandleNewSubmission(PermitSubmittedEvent e)
+    {
+        _statusMessage = $"New application: {e.ApplicationNumber} — {e.FacilityName}";
+        _ = InvokeAsync(async () => { await LoadPageAsync(_page); StateHasChanged(); });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hubs.OnQueueUpdated -= HandleNewSubmission;
+        await Hubs.DisposeAsync();
     }
 }

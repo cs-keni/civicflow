@@ -1,29 +1,38 @@
 # Current Task
 
-**Phase**: 4 — SignalR Real-Time
+**Phase**: 5 — AI Integration (Claude API)
 **Status**: Not started
 **Started**: —
 
 ## Goal
 
-Implement 4 SignalR hubs (PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub), wire fire-and-forget sends from service layer, connect Blazor WASM clients with cookie auth, add aria-live regions for status update notifications.
+Implement Claude API integration via `Anthropic.SDK`:
+- `IPermitAIService.ValidateApplicationFieldsAsync` — claude-haiku-4-5, advisory suggestions for permit form
+- `IInspectionAIService.GeneratePublicSummaryAsync` — claude-sonnet-4-6, plain-language inspection summary
+- Both with graceful degradation (catch, log, return safe default)
+- `MockAIService` for deterministic testing without API calls
+- `AI_PROVIDER` env var switching in DI registration (mock vs real)
+- AI summary editor on /inspections/{id} page (Inspector reviews + edits)
+- "Suggestions temporarily unavailable" UI hint when AI list is empty
 
 ## Subtasks
 
-- [ ] Implement SignalR hub classes in CivicFlow.API/Hubs/
-- [ ] Wire hub sends in service layer (fire-and-forget)
-- [ ] Blazor WASM: HubConnectionBuilder with withCredentials (cookie)
-- [ ] Wire permit status changes → applicant group
-- [ ] Wire new application submitted → staff-reviewers group
-- [ ] Wire inspection scheduled → inspector group
-- [ ] Wire all activity → admin-feed group
-- [ ] Add aria-live regions to Dashboard and ReviewQueue for real-time updates
+- [ ] Add Anthropic.SDK NuGet package to CivicFlow.Infrastructure (already referenced in .csproj from Phase 0)
+- [ ] Implement ClaudeAIService (PermitAIService + InspectionAIService) in CivicFlow.Infrastructure/Services/
+- [ ] Implement MockAIService with deterministic responses
+- [ ] Wire AI_PROVIDER env var switching in ServiceRegistration.cs
+- [ ] Wire permit field validation into PermitService (advisory, non-blocking)
+- [ ] Wire inspection summary generation into InspectionService (on completion)
+- [ ] Add AI summary editor + "generate manually" button to /inspections/{id}
+- [ ] Add refusal check before returning AI response
+- [ ] Confirm no PII in prompts/logs
 
 ## Previous Task (completed)
 
-Phase 3 — Blazor WebAssembly Frontend (completed 2026-06-12)
-- Auth state provider, typed HTTP client, delegating handler
-- CSS design system, layout (sidebar/nav/topbar), shared components
-- 17 pages: Login, Dashboard, Facilities (2), Permits (3), ReviewQueue, Inspections (3), ViolationList, Public (2), Admin (2)
-- WCAG 2.1 AA: skip link, aria-labels, aria-required, aria-live, role attributes, status badges with aria-label
+Phase 4 — SignalR Real-Time (completed 2026-06-12)
+- IRealtimeNotifier interface + NullRealtimeNotifier (Application/Infrastructure)
+- SignalRNotifier override registered in API (fire-and-forget sends)
+- 4 hub classes (PermitStatusHub, ReviewQueueHub, InspectionHub, AdminActivityHub)
+- HubConnectionService in Blazor WASM client (cookie auth, auto-reconnect, graceful degrade)
+- Dashboard, ReviewQueue, InspectionList wired with SignalR and aria-live regions
 - `dotnet build` → 0 errors | `dotnet test` → 43 passed

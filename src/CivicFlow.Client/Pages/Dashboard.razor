@@ -1,6 +1,8 @@
 @page "/"
 @attribute [Authorize]
 @inject CivicFlowApiClient Api
+@inject HubConnectionService Hubs
+@implements IAsyncDisposable
 
 <PageTitle>Dashboard — CivicFlow</PageTitle>
 
@@ -158,6 +160,18 @@ else
         {
             var auth = await AuthState;
             _userName = auth.User.Identity?.Name ?? "User";
+
+            var user = auth.User;
+            if (user.IsInRole("AgencyStaff") || user.IsInRole("Admin"))
+            {
+                Hubs.OnQueueUpdated += HandleQueueUpdated;
+                await Hubs.ConnectReviewQueueHubAsync();
+            }
+            else
+            {
+                Hubs.OnPermitStatusChanged += HandlePermitStatusChanged;
+                await Hubs.ConnectPermitHubAsync();
+            }
         }
 
         var permitsTask = Api.GetPermitsAsync(1, 5);
@@ -180,5 +194,31 @@ else
         _recentInspections = inspections?.Items ?? [];
 
         _loading = false;
+    }
+
+    private void HandlePermitStatusChanged(PermitStatusChangedEvent e)
+    {
+        _statusMessage = $"{e.ApplicationNumber} status changed to {e.NewStatus}";
+        var match = _recentPermits.FirstOrDefault(p => p.Id == e.PermitId);
+        if (match is not null)
+        {
+            var idx = _recentPermits.IndexOf(match);
+            _recentPermits[idx] = match with { Status = e.NewStatus };
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleQueueUpdated(PermitSubmittedEvent e)
+    {
+        _permitCount++;
+        _statusMessage = $"New application: {e.ApplicationNumber} — {e.FacilityName}";
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hubs.OnPermitStatusChanged -= HandlePermitStatusChanged;
+        Hubs.OnQueueUpdated -= HandleQueueUpdated;
+        await Hubs.DisposeAsync();
     }
 }

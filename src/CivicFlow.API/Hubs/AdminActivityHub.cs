@@ -3,6 +3,12 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace CivicFlow.API.Hubs;
 
-// Phase 4 (TODO-7): real-time audit log feed for Admin role.
 [Authorize(Roles = "Admin")]
-public class AdminActivityHub : Hub { }
+public class AdminActivityHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "admin-feed");
+        await base.OnConnectedAsync();
+    }
+}

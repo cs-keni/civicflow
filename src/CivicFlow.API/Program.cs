@@ -75,6 +75,9 @@ builder.Services.AddControllers();
 
 // ── SignalR ───────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
+// Override NullRealtimeNotifier (registered in AddInfrastructure) with real SignalR implementation
+builder.Services.AddScoped<CivicFlow.Application.Interfaces.IRealtimeNotifier,
+    CivicFlow.API.Services.SignalRNotifier>();
 
 // ── Swagger / OpenAPI ─────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();

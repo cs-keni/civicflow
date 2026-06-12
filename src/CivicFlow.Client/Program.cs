@@ -16,6 +16,9 @@ builder.Services.AddHttpClient<CivicFlowApiClient>(client =>
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
     .AddHttpMessageHandler<AuthDelegatingHandler>();
 
+// ── SignalR ───────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<HubConnectionService>();
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<CookieAuthStateProvider>();
