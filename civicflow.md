@@ -57,7 +57,7 @@ The platform serves five user roles:
 | ORM | Entity Framework Core 8 |
 | Database | SQL Server (LocalDB for dev, Azure SQL for production notes) |
 | Real-time | ASP.NET Core SignalR |
-| Auth | ASP.NET Core Identity + JWT Bearer tokens |
+| Auth | ASP.NET Core Identity + HttpOnly SameSite=Strict cookie (BFF pattern, per D1) |
 | AI | Anthropic .NET SDK (Claude API) + Azure AI Services mock |
 | API Docs | Swagger / OpenAPI (Swashbuckle) |
 | Testing | xUnit, Moq, FluentAssertions |
@@ -386,7 +386,7 @@ Clients join groups based on their role on connect:
 
 - All inputs validated server-side with FluentValidation (never trust client)
 - Parameterized queries via EF Core (no string-interpolated SQL)
-- JWT tokens expire in 1 hour; refresh token pattern for Blazor WASM
+- HttpOnly SameSite=Strict cookie auth (BFF pattern, per D1) — no JWT in localStorage or JS-accessible storage
 - Role-based authorization via `[Authorize(Roles = "...")]` on all endpoints
 - HTTPS enforced in all environments
 - CORS configured to allowed origins only
@@ -403,19 +403,20 @@ Clients join groups based on their role on connect:
 ### Docker Compose (dev)
 
 ```yaml
+# D2/D14: WASM is hosted from within the API (same origin) — no separate client service.
+# UseBlazorFrameworkFiles() in Program.cs serves the WASM bundle from the API.
+# This is required for HttpOnly SameSite=Strict cookies to work (same-origin policy).
 services:
   api:
     build: ./src/CivicFlow.API
     ports: ["5000:80"]
     environment:
-      - ConnectionStrings__Default=Server=db;...
+      - ConnectionStrings__Default=Server=db;Database=CivicFlow;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - AI_PROVIDER=${AI_PROVIDER:-mock}
-    depends_on: [db]
-
-  client:
-    build: ./src/CivicFlow.Client
-    ports: ["3000:80"]
+    depends_on:
+      db:
+        condition: service_healthy
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -424,6 +425,12 @@ services:
       - ACCEPT_EULA=Y
     ports: ["1433:1433"]
     volumes: [sqldata:/var/opt/mssql]
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "${SA_PASSWORD}" -Q "SELECT 1" || exit 1
+      interval: 10s
+      retries: 10
+      start_period: 10s
+      timeout: 3s
 ```
 
 ### GitHub Actions
@@ -441,8 +448,7 @@ services:
 ```
 
 ### Azure Notes (document, don't necessarily deploy)
-- Azure App Service (Linux, .NET 8 runtime) for API
-- Azure Static Web Apps for Blazor WASM client
+- Azure App Service (Linux, .NET 8 runtime) for API + WASM (single service — WASM is served from within the API via UseBlazorFrameworkFiles, per D14; do NOT use Azure Static Web Apps which would break SameSite=Strict cookie auth)
 - Azure SQL Database (General Purpose, serverless tier for dev cost)
 - Azure Key Vault for secrets management
 - Azure Container Registry for Docker images
@@ -481,7 +487,7 @@ services:
 - [ ] Implement FluentValidation validators for all request DTOs
 - [ ] Implement error handling middleware (global exception handler → consistent error response shape)
 - [ ] Implement AuditLog middleware (auto-capture all write operations)
-- [ ] Implement ASP.NET Core Identity + JWT auth (register, login, refresh, roles)
+- [ ] Implement ASP.NET Core Identity + HttpOnly SameSite=Strict cookie auth (BFF pattern, per D1): AuthController with POST /api/auth/login, /api/auth/logout, /api/auth/me; rate limiting on login endpoint
 - [ ] Write unit tests for all service methods (Moq + xUnit)
 - [ ] Verify all endpoints in Swagger
 - [ ] Run `/review` before calling Phase 2 done
@@ -523,7 +529,7 @@ services:
 
 ### Phase 6 — DevOps
 - [ ] Finalize Dockerfile for API (multi-stage build)
-- [ ] Finalize Dockerfile for Blazor Client (nginx serving static files)
+- [ ] (Note: no separate client Dockerfile — WASM is served from within CivicFlow.API via UseBlazorFrameworkFiles, per D14; single multi-stage Dockerfile only)
 - [ ] Finalize Docker Compose with SQL Server
 - [ ] Create .env.example with all required environment variables documented
 - [ ] Write GitHub Actions CI workflow (build + test + Docker build)
@@ -555,7 +561,7 @@ Include these in Kenny's resume and the portfolio case study:
 - Designed a relational schema in SQL Server with EF Core migrations, stored procedures for compliance reporting, and audit-log middleware that captures every write operation for regulatory traceability
 - Integrated Claude API (Anthropic) to auto-generate plain-language public summaries from technical inspection field notes, and to flag incomplete permit application fields before submission
 - Implemented real-time permit status updates using ASP.NET Core SignalR across role-scoped hub groups, enabling live staff review queue updates and applicant status notifications
-- Applied WCAG 2.1 AA accessibility standards across all Blazor pages and enforced OWASP-aligned security practices including role-based JWT auth, FluentValidation server-side validation, and parameterized queries throughout
+- Applied WCAG 2.1 AA accessibility standards across all Blazor pages and enforced OWASP-aligned security practices including HttpOnly SameSite=Strict cookie auth (BFF pattern, OWASP A07), FluentValidation server-side validation, and parameterized queries throughout
 
 ---
 

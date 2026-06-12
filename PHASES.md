@@ -65,7 +65,7 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 - [ ] Create initial EF Core migration (`dotnet ef migrations add InitialSchema`)
 - [ ] Write seed data (HasData or custom seeder):
   - 3 facilities, 10 permit applications across all statuses
-  - 8 inspections, 5 violations, 2 users per role (10 users total)
+  - 8 inspections, 5 violations, 8 users total (2 per role × 4 authenticated roles: Applicant, Staff, Inspector, Admin — PublicViewer is unauthenticated, no Identity account seeded)
 - [ ] Write `database/001_initial_schema.sql` (manual T-SQL equivalent — no EF-generated, hand-written)
 - [ ] Write `database/002_seed_data.sql`
 - [ ] Write `database/003_indexes.sql` (with comments explaining each index choice)
@@ -100,7 +100,9 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
   - ViolationsController, PublicController (unauthenticated), AdminController
 - [ ] Add PaginatedResult<T> wrapper — all list endpoints use page/pageSize query params
 - [ ] Configure role-based authorization: [Authorize(Roles = "...")] on all endpoints
+- [ ] Add ownership-scoped data access: when requesting user has role "Applicant", filter permit/inspection queries to `ApplicantUserId == currentUser.Id`; Staff/Inspector/Admin get unfiltered data (prevents IDOR on permit/inspection endpoints)
 - [ ] Apply CORS and CSP headers middleware
+- [ ] Add ASP.NET Core health checks: `services.AddHealthChecks().AddDbContextCheck<CivicFlowDbContext>()` + `app.MapHealthChecks("/health")` (returns {status, db, timestamp} — Windsor can verify the live app before an interview)
 - [ ] Write unit tests for all service methods (Moq + xUnit + FluentAssertions)
 - [ ] Verify all endpoints in Swagger
 - [ ] Run `/review` before calling Phase 2 done
@@ -111,6 +113,7 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 - [ ] Set up Blazor WASM hosted from CivicFlow.API (same origin via UseBlazorFrameworkFiles)
 - [ ] Configure cookie auth state provider in Blazor WASM (AuthenticationStateProvider reading /api/auth/me)
+- [ ] Add `AuthDelegatingHandler` on the Blazor WASM HttpClient: intercepts 401 responses from any API call and navigates to /login (prevents blank/broken state when session expires mid-use)
 - [ ] Build app layout: sidebar nav (role-adaptive), top bar, skip-to-main-content link
 - [ ] Build pages (all with WCAG 2.1 AA — labels, aria, focus indicators, keyboard nav):
   - /login, /register
@@ -123,11 +126,16 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
   - /public/search (unauthenticated), /public/facility/{id}
   - /admin/audit-log (filters by date, user, action, entity), /admin/users
 - [ ] All pages: aria-live regions for SignalR status updates
+- [ ] Loading states on all data-fetching pages: skeleton placeholder while list/detail data loads (3 animated skeleton rows for list views)
+- [ ] AI suggestions panel: animated skeleton (3 placeholder lines) while Claude call is in-flight; "Suggestions unavailable" fallback when empty
+- [ ] Submit button: spinner + disabled state during form POST (prevents double-submit)
+- [ ] Permit status badge: color-coded with aria-label (SUBMITTED=blue, APPROVED=green, REJECTED=red, REVISIONS_REQUESTED=amber) so status is not communicated by color alone
 - [ ] All form inputs: associated labels, aria-describedby for errors
 - [ ] Color contrast ≥ 4.5:1 throughout (verify with browser devtools)
+- [ ] Create `docs/DEMO.md`: seeded user credentials (email + password for each of the 4 authenticated roles), exact click-through flows for each happy path, expected AI behavior (suggestions appear with AI_PROVIDER=real, mock suggestions with AI_PROVIDER=mock)
 - [ ] Take screenshots of each major page with seed data (feed into Phase 8 README)
 - [ ] Run `/qa` to verify all pages and flows
-- [ ] Run bUnit tests for key components
+- [ ] (bUnit component tests deferred to Phase 7 — see GSTACK REVIEW REPORT)
 
 ---
 
@@ -157,6 +165,7 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
   - `IPermitAIService.ValidateApplicationFieldsAsync`: uses claude-haiku-4-5, advisory suggestions
   - `IInspectionAIService.GeneratePublicSummaryAsync`: uses claude-sonnet-4-6, plain-language summary
   - Both wrapped in try/catch → graceful degradation on API failure (log + return safe default)
+  - Add refusal check: before returning response content, validate it isn't a refusal string (null/empty/starts with known refusal phrases); return safe default if it is
   - System prompts as specified in civicflow.md; no PII in prompts/logs
 - [ ] Implement MockAIService (deterministic responses for all scenarios, no API calls)
 - [ ] Wire AI_PROVIDER env var switching in DI registration (mock vs real)
@@ -221,15 +230,16 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 1 | issues_found | Claude subagent outside voice (5 findings, 1 critical resolved: D14 WASM origin) |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 13 issues found, all resolved via D2–D15 decisions |
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAR (PLAN) | 6 proposals, 2 accepted, 4 deferred; 10 tasks; 0 critical gaps |
+| Outside Voice | `/plan-ceo-review` | Independent 2nd opinion | 2 | issues_found | Codex: 19 findings, 3 cross-model tensions resolved (CSRF, AuditLog layer, demo script) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 13 issues found, all resolved via D2–D15 decisions |
 | Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
-**CROSS-MODEL:** Subagent caught BFF/WASM same-origin issue the main review missed (D14). Both models agree on all other decisions.
-**UNRESOLVED:** 0 unresolved decisions.
-**VERDICT:** ENG CLEARED — 13 architecture/quality/test/performance issues surfaced and resolved. Ready to implement Phase 0.
+**CROSS-MODEL:** Codex outside voice (19 findings) — 3 tensions resolved: CSRF kept SameSite=Strict; AuditLog kept D4 middleware; demo script added to Phase 3. Cross-model agreement on all architecture decisions post-resolution.
+**VERDICT:** CEO + ENG CLEARED — spec reconciled, 10 implementation tasks surfaced and resolved, 0 critical gaps. Ready to implement Phase 0.
+
+NO UNRESOLVED DECISIONS
 
 ---
 
@@ -238,5 +248,5 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 - Built a production-quality full-stack permit and compliance platform in C#, ASP.NET Core 8, and Blazor WebAssembly with cookie-based BFF auth (OWASP Top 10 A07), entity-specific repositories, and a clean layered architecture targeting government agency workflows used by firms like Windsor Solutions
 - Designed a relational schema in SQL Server with EF Core migrations, SQL Server SEQUENCE objects for concurrency-safe formatted permit numbering, stored procedures and aggregate views for compliance reporting, and audit-log middleware using transactional writes to guarantee regulatory traceability
 - Integrated Claude API (claude-haiku-4-5 and claude-sonnet-4-6) with graceful degradation patterns — advisory features never gate core workflows — and environment-variable-switched mock/real provider abstraction
-- Implemented ASP.NET Core SignalR with fire-and-forget hub sends, cookie-authenticated role-scoped groups, and 4 domain-specific hubs enabling live permit queue updates, applicant status notifications, and admin activity feeds
+- *(planned — Phase 4 not yet built)* Implemented ASP.NET Core SignalR with fire-and-forget hub sends, cookie-authenticated role-scoped groups, and 4 domain-specific hubs enabling live permit queue updates, applicant status notifications, and admin activity feeds
 - Applied WCAG 2.1 AA accessibility (verified with axe + Playwright) and OWASP-aligned security across all pages including FluentValidation server-side validation, HasQueryFilter soft-delete protection, and paginated API endpoints throughout
