@@ -5,7 +5,9 @@ namespace CivicFlow.Client.Services;
 
 /// <summary>
 /// Manages SignalR hub connections for the Blazor WASM client.
-/// Browser sends auth cookies automatically (same-origin).
+/// Browser sends auth cookies automatically (same-origin, BFF pattern).
+/// Lifetime is owned by the DI container (scoped = singleton in WASM).
+/// Pages must only subscribe/unsubscribe events — never call DisposeAsync.
 /// </summary>
 public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposable
 {
@@ -20,7 +22,7 @@ public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposab
 
     public async Task ConnectPermitHubAsync(CancellationToken ct = default)
     {
-        if (_permitHub?.State == HubConnectionState.Connected) return;
+        if (_permitHub?.State is HubConnectionState.Connected or HubConnectionState.Reconnecting) return;
         _permitHub = BuildConnection("/hubs/permit-status");
         _permitHub.On<PermitStatusChangedEvent>("PermitStatusChanged", e => OnPermitStatusChanged?.Invoke(e));
         await SafeStartAsync(_permitHub, ct);
@@ -32,7 +34,7 @@ public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposab
 
     public async Task ConnectReviewQueueHubAsync(CancellationToken ct = default)
     {
-        if (_reviewQueueHub?.State == HubConnectionState.Connected) return;
+        if (_reviewQueueHub?.State is HubConnectionState.Connected or HubConnectionState.Reconnecting) return;
         _reviewQueueHub = BuildConnection("/hubs/review-queue");
         _reviewQueueHub.On<PermitSubmittedEvent>("PermitSubmitted", e => OnQueueUpdated?.Invoke(e));
         await SafeStartAsync(_reviewQueueHub, ct);
@@ -44,7 +46,7 @@ public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposab
 
     public async Task ConnectInspectionHubAsync(CancellationToken ct = default)
     {
-        if (_inspectionHub?.State == HubConnectionState.Connected) return;
+        if (_inspectionHub?.State is HubConnectionState.Connected or HubConnectionState.Reconnecting) return;
         _inspectionHub = BuildConnection("/hubs/inspection");
         _inspectionHub.On<InspectionScheduledEvent>("InspectionScheduled", e => OnInspectionScheduled?.Invoke(e));
         await SafeStartAsync(_inspectionHub, ct);
@@ -56,7 +58,7 @@ public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposab
 
     public async Task ConnectAdminHubAsync(CancellationToken ct = default)
     {
-        if (_adminHub?.State == HubConnectionState.Connected) return;
+        if (_adminHub?.State is HubConnectionState.Connected or HubConnectionState.Reconnecting) return;
         _adminHub = BuildConnection("/hubs/admin-activity");
         _adminHub.On<AdminActivityEvent>("AdminActivity", e => OnAdminActivity?.Invoke(e));
         await SafeStartAsync(_adminHub, ct);
@@ -76,6 +78,7 @@ public sealed class HubConnectionService(NavigationManager nav) : IAsyncDisposab
         catch { /* graceful degradation — real-time is advisory, not required */ }
     }
 
+    // Called only by the DI container when the circuit ends (browser tab close).
     public async ValueTask DisposeAsync()
     {
         if (_permitHub is not null) await _permitHub.DisposeAsync();

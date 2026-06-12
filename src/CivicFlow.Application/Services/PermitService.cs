@@ -94,10 +94,7 @@ public class PermitService(
         var facility = await facilityRepo.GetByIdAsync(permit.FacilityId);
         var dto = await TransitionStatusAsync(permit, PermitStatus.Submitted, currentUser.UserId!, null);
         if (dto is not null)
-        {
             notifier.NotifyPermitSubmitted(permit.Id, permit.ApplicationNumber, facility?.LegalName ?? "", permit.ApplicantId);
-            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Submit", $"{permit.ApplicationNumber} submitted by applicant");
-        }
         return dto;
     }
 
@@ -128,10 +125,7 @@ public class PermitService(
         permit.ExpiresAt = DateTime.UtcNow.AddYears(2);
         var dto = await TransitionStatusAsync(permit, PermitStatus.Approved, currentUser.UserId!, notes);
         if (dto is not null)
-        {
             notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Approved", permit.ApplicantId);
-            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Approve", $"{permit.ApplicationNumber} approved");
-        }
         return dto;
     }
 
@@ -144,10 +138,7 @@ public class PermitService(
         permit.ReviewedAt = DateTime.UtcNow;
         var dto = await TransitionStatusAsync(permit, PermitStatus.Denied, currentUser.UserId!, notes);
         if (dto is not null)
-        {
             notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Denied", permit.ApplicantId);
-            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "Deny", $"{permit.ApplicationNumber} denied");
-        }
         return dto;
     }
 
@@ -160,10 +151,7 @@ public class PermitService(
         permit.ReviewedAt = DateTime.UtcNow;
         var dto = await TransitionStatusAsync(permit, PermitStatus.ChangesRequested, currentUser.UserId!, notes);
         if (dto is not null)
-        {
             notifier.NotifyPermitStatusChanged(permit.Id, permit.ApplicationNumber, "Changes Requested", permit.ApplicantId);
-            notifier.NotifyAdminActivity("PermitApplication", permit.Id.ToString(), "RequestChanges", $"{permit.ApplicationNumber} — changes requested");
-        }
         return dto;
     }
 

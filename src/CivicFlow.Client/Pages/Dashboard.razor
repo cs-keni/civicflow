@@ -215,10 +215,10 @@ else
         InvokeAsync(StateHasChanged);
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Hubs.OnPermitStatusChanged -= HandlePermitStatusChanged;
         Hubs.OnQueueUpdated -= HandleQueueUpdated;
-        await Hubs.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 }

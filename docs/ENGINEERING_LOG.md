@@ -4,6 +4,39 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — /review: Fix 4 P1 SignalR bugs
+
+**Agent**: Claude Code (claude-sonnet-4-6) via /review skill
+**Commit**: (see git log)
+
+### Changes
+
+- `CivicFlow.Client/Services/HubConnectionService.cs` — Fixed `ConnectXxx` guards to also block on `Reconnecting` state (was: `== Connected`, now: `is Connected or Reconnecting`). Prevents orphaned WebSocket leaks when reconnect is in progress. Added clarifying comment: pages own event subscriptions; the DI container owns connection lifetime.
+- `CivicFlow.Client/Pages/Dashboard.razor` — Removed `await Hubs.DisposeAsync()` from `DisposeAsync`. Pages never dispose the shared service.
+- `CivicFlow.Client/Pages/ReviewQueue.razor` — Same.
+- `CivicFlow.Client/Pages/Inspections/InspectionList.razor` — Same.
+- `CivicFlow.API/Services/SignalRNotifier.cs:47` — Fixed cross-hub routing: `inspectionHub.Clients.Group("staff-reviewers")` → `reviewQueueHub.Clients.Group("staff-reviewers")`. SignalR groups are per-hub; staff join `staff-reviewers` in ReviewQueueHub only.
+- `CivicFlow.Application/Services/PermitService.cs` — Removed 4 duplicate `NotifyAdminActivity` calls. `NotifyPermitSubmitted` and `NotifyPermitStatusChanged` already fan out to `admin-feed` internally in `SignalRNotifier`.
+- `CivicFlow.Application/Services/InspectionService.cs` — Removed 1 duplicate `NotifyAdminActivity` call. `NotifyInspectionScheduled` already fans out to `admin-feed`.
+- Build: 0 errors | Tests: 43 passed
+
+### Bugs found by /review
+
+1. **P1 (fixed)**: Pages calling `Hubs.DisposeAsync()` killed the shared scoped singleton. Every navigation tore down all hub connections.
+2. **P1 (fixed)**: `ConnectXxx` guard checked `== Connected` only — `Reconnecting` state bypassed the guard, orphaning in-flight WebSockets.
+3. **P1 (fixed)**: `inspectionHub.Clients.Group("staff-reviewers")` is always empty — groups are hub-scoped. Staff are in `staff-reviewers` inside `ReviewQueueHub` only.
+4. **P1 (fixed)**: Double admin-feed events on every permit/inspection action. The specific `Notify*` methods already fan out to `admin-feed`; the explicit `NotifyAdminActivity` calls in services were redundant.
+
+### Open findings (not fixed — deferred or pre-existing)
+
+- `AssignStaffAsync` transitions to UnderReview silently (no notification). Low-impact, add in Phase 5.
+- `CancelAsync` transitions to Cancelled silently (no notification). Same.
+- `InspectionService.GetInspectionsAsync` Applicant falls through to `GetAllAsync` — API-level IDOR (pre-existing, not Phase 4 scope). Fix in Phase 5.
+- Testing gaps: no tests for hub authorization, notifier wiring, CookieAuthStateProvider. Deferred to Phase 7.
+- Magic string group names duplicated across 5 files (`"staff-reviewers"`, `"admin-feed"`, etc.) — extract to `HubGroups` constants. Deferred to Phase 5.
+
+---
+
 ## 2026-06-12 — Phase 4: SignalR Real-Time
 
 **Agent**: Claude Code (claude-sonnet-4-6)

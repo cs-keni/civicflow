@@ -73,7 +73,6 @@ public class InspectionService(
         var dto = ToDetailDto(created, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
 
         notifier.NotifyInspectionScheduled(created.Id, created.InspectionNumber, facility?.LegalName ?? "", created.InspectorId, created.ScheduledDate);
-        notifier.NotifyAdminActivity("Inspection", created.Id.ToString(), "Schedule", $"{created.InspectionNumber} scheduled for {created.ScheduledDate:MMM d, yyyy}");
 
         return dto;
     }

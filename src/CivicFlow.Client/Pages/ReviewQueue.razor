@@ -96,9 +96,9 @@
         _ = InvokeAsync(async () => { await LoadPageAsync(_page); StateHasChanged(); });
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Hubs.OnQueueUpdated -= HandleNewSubmission;
-        await Hubs.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 }

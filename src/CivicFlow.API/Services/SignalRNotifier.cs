@@ -44,7 +44,8 @@ public sealed class SignalRNotifier(
         var payload = new { inspectionId, inspectionNumber, facilityName, inspectorId, scheduledDate, timestamp = DateTime.UtcNow };
 
         Fire(inspectionHub.Clients.Group($"inspector-{inspectorId}").SendAsync("InspectionScheduled", payload));
-        Fire(inspectionHub.Clients.Group("staff-reviewers").SendAsync("InspectionScheduled", payload));
+        // Staff are in the staff-reviewers group within ReviewQueueHub (not InspectionHub — groups are per-hub)
+        Fire(reviewQueueHub.Clients.Group("staff-reviewers").SendAsync("InspectionScheduled", payload));
         Fire(adminHub.Clients.Group("admin-feed").SendAsync("AdminActivity", new
         {
             entityType = "Inspection", entityId = inspectionId.ToString(),
