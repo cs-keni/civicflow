@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CivicFlow.Application\CivicFlow.Application.csproj" />
     <ProjectReference Include="..\CivicFlow.Infrastructure\CivicFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\CivicFlow.Client\CivicFlow.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

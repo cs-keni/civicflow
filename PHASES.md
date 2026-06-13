@@ -191,22 +191,18 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 6 — DevOps
+## Phase 6 — DevOps ✅ COMPLETED 2026-06-12
 
-- [ ] Finalize Dockerfile for CivicFlow.API (multi-stage: sdk → runtime; serves WASM from wwwroot)
-- [ ] Finalize Docker Compose:
-  - `api` service: API + WASM, port 5000, ANTHROPIC_API_KEY + AI_PROVIDER env vars
-  - `db` service: SQL Server 2022, SA_PASSWORD, volume mount
-- [ ] Create `.env.example` with all required environment variables documented
-- [ ] Write `.github/workflows/ci.yml` with two AI jobs (NOT a matrix — matrix include entries always run):
-  - Restore NuGet (`dotnet restore` + `dotnet tool restore`), build solution, run unit tests, run integration tests (SQL Server service container), build Docker image
-  - Job `test-mock` (always-on, runs on every push/PR): `AI_PROVIDER=mock` — full integration test suite
-  - Job `test-real-ai` (manual + guarded): `if: github.event_name == 'workflow_dispatch' && secrets.ANTHROPIC_API_KEY != ''` — runs a single targeted ClaudeAIService connectivity check only (NOT the full test suite); 1-2 API calls, <30 seconds, verifies API key validity and endpoint reachability
-- [ ] Export Swagger JSON (add as step in CI after `dotnet build -c Release`, with `ASPNETCORE_ENVIRONMENT=SwaggerGen`):
-  - `dotnet tool restore`
-  - `dotnet swagger tofile --output docs/swagger.json bin/Release/net8.0/CivicFlow.API.dll v1` (with `ASPNETCORE_ENVIRONMENT=SwaggerGen` set for this step only)
-- [ ] Write Azure deployment guide in README (App Service + Azure SQL + Key Vault)
-- [ ] Create architecture diagram in README (Mermaid or ASCII)
+- [x] Fixed `docker-compose.yml`: `AI__Provider` → `AI_PROVIDER` (env var key mismatch vs ServiceRegistration)
+- [x] Fixed `CivicFlow.API.csproj`: added `<ProjectReference>` to CivicFlow.Client so WASM publishes into Docker image
+- [x] Dockerfile verified: multi-stage (sdk → aspnet runtime), serves WASM from wwwroot via published Client output
+- [x] Docker Compose: `api` service (port 5000, `AI_PROVIDER`, `ANTHROPIC_API_KEY`), `db` service (SQL Server 2022, volume)
+- [x] `.env.example`: all env vars documented
+- [x] `.github/workflows/ci.yml`: two jobs — `test-mock` (always-on, full suite + Swagger export + Docker build) and `test-real-ai` (manual dispatch + `secrets.ANTHROPIC_API_KEY` guard, `Category=ClaudeConnectivity` filter)
+- [x] `ClaudeConnectivityTest.cs`: smoke test in IntegrationTests — skips when `AI_PROVIDER != claude`, verifies real API call returns non-empty suggestions
+- [x] Swagger JSON exported to `docs/swagger.json` (via `dotnet swagger tofile`, `ASPNETCORE_ENVIRONMENT=SwaggerGen`)
+- [x] `README.md`: architecture diagram (Mermaid), Azure deployment guide (App Service + Azure SQL + Key Vault + ACR), quick start, env vars, security, resume bullets
+- [x] Build: 0 errors | Tests: 52 passed (50 unit + 2 integration)
 
 ---
 

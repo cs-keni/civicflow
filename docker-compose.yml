@@ -24,7 +24,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
       ConnectionStrings__DefaultConnection: "Server=db;Database=CivicFlowDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
-      AI__Provider: "${AI_PROVIDER:-mock}"
+      AI_PROVIDER: "${AI_PROVIDER:-mock}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     depends_on:
       db:

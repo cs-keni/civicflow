@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ── Always-on: build, test (mock AI), export Swagger, validate Docker ─────────
+  test-mock:
+    name: Build · Test · Swagger · Docker
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: CI_Strong_Pass_1!
+          ACCEPT_EULA: "Y"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'CI_Strong_Pass_1!' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+    env:
+      ConnectionStrings__DefaultConnection: >-
+        Server=localhost;Database=CivicFlowCIDb;User Id=sa;
+        Password=CI_Strong_Pass_1!;TrustServerCertificate=True;
+      AI_PROVIDER: mock
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore NuGet packages
+        run: dotnet restore
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore -c Release
+
+      - name: Unit tests
+        run: dotnet test tests/CivicFlow.UnitTests/ --no-build -c Release --logger "github-actions"
+
+      - name: Integration tests
+        run: dotnet test tests/CivicFlow.IntegrationTests/ --no-build -c Release --logger "github-actions"
+
+      - name: Export Swagger JSON
+        env:
+          ASPNETCORE_ENVIRONMENT: SwaggerGen
+        run: |
+          dotnet swagger tofile \
+            --output docs/swagger.json \
+            src/CivicFlow.API/bin/Release/net8.0/CivicFlow.API.dll v1
+
+      - name: Upload Swagger artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swagger-json
+          path: docs/swagger.json
+          retention-days: 30
+
+      - name: Build Docker image
+        run: docker build -f src/CivicFlow.API/Dockerfile -t civicflow:${{ github.sha }} .
+
+  # ── Manual only: verify a real Claude API call succeeds ───────────────────────
+  test-real-ai:
+    name: Claude API Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && secrets.ANTHROPIC_API_KEY != ''
+
+    env:
+      AI_PROVIDER: claude
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore NuGet packages
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore -c Release
+
+      - name: Claude connectivity smoke test
+        run: |
+          dotnet test tests/CivicFlow.IntegrationTests/ \
+            --no-build -c Release \
+            --filter "Category=ClaudeConnectivity" \
+            --logger "github-actions"

@@ -4,6 +4,29 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 6: DevOps
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Build**: 0 errors | **Tests**: 52 passed (50 unit + 2 integration)
+
+### Changes
+
+- `docker-compose.yml` — Fixed `AI__Provider` → `AI_PROVIDER` (double-underscore maps to nested config key `AI:Provider`, not `AI_PROVIDER`; ServiceRegistration reads `config["AI_PROVIDER"]`)
+- `src/CivicFlow.API/CivicFlow.API.csproj` — Added `<ProjectReference>` to `CivicFlow.Client.csproj` so `dotnet publish` includes Blazor WASM `_framework/` output in `wwwroot/`; required for Docker image to serve the frontend
+- `.github/workflows/ci.yml` — NEW: two-job CI workflow. `test-mock` (always-on): restore, build Release, unit tests, integration tests (SQL Server service container), Swagger JSON export, Docker build. `test-real-ai` (manual dispatch, guarded by `ANTHROPIC_API_KEY` secret): builds and runs `Category=ClaudeConnectivity` filter only
+- `tests/CivicFlow.IntegrationTests/ClaudeConnectivityTest.cs` — NEW: smoke test; skips when `AI_PROVIDER != claude` or no API key; makes one real permit AI call; verifies non-empty response
+- `tests/CivicFlow.IntegrationTests/CivicFlow.IntegrationTests.csproj` — Added `<ProjectReference>` to Infrastructure so smoke test can instantiate Claude services directly
+- `docs/swagger.json` — NEW: exported via `dotnet swagger tofile` with `ASPNETCORE_ENVIRONMENT=SwaggerGen`
+- `README.md` — NEW: Mermaid architecture diagram, quick start, env vars table, AI integration description, CI/CD summary, Azure deployment guide (App Service + Azure SQL + Key Vault + ACR), security summary, resume bullets
+
+### Architecture decisions
+
+- Client project reference added to API so Docker publish works without a separate WASM build step — standard hosted Blazor WASM pattern
+- Smoke test uses skip-not-fail pattern (returns early) so it compiles and runs in `test-mock` without error when `AI_PROVIDER=mock`
+- `ASPNETCORE_ENVIRONMENT=SwaggerGen` guard in Program.cs uses InMemory DB and skips health checks — safe to run in CI without SQL Server for the Swagger export step
+
+---
+
 ## 2026-06-12 — /review fixes: Phase 5 P1+P2 bugs
 
 **Agent**: Claude Code (claude-sonnet-4-6) via /review
