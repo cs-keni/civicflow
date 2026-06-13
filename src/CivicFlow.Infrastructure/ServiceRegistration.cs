@@ -40,7 +40,11 @@ public static class ServiceRegistration
         // AI services — switch between real Claude and deterministic Mock via AI_PROVIDER env var
         if (string.Equals(config["AI_PROVIDER"], "claude", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddSingleton(_ => new AnthropicClient(new APIAuthentication(config["ANTHROPIC_API_KEY"] ?? "")));
+            var apiKey = config["ANTHROPIC_API_KEY"];
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException(
+                    "ANTHROPIC_API_KEY must be set when AI_PROVIDER=claude");
+            services.AddSingleton(_ => new AnthropicClient(new APIAuthentication(apiKey)));
             services.AddScoped<IPermitAIService, ClaudePermitAIService>();
             services.AddScoped<IInspectionAIService, ClaudeInspectionAIService>();
         }

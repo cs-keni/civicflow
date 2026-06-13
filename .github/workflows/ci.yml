@@ -79,7 +79,7 @@ jobs:
   test-real-ai:
     name: Claude API Smoke Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && secrets.ANTHROPIC_API_KEY != ''
+    if: github.event_name == 'workflow_dispatch' && vars.HAS_ANTHROPIC_KEY == 'true'
 
     env:
       AI_PROVIDER: claude

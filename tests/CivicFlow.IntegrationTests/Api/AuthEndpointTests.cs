@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CivicFlow.IntegrationTests.Api;
 
@@ -10,10 +9,10 @@ public class AuthEndpointTests(CivicFlowWebAppFactory factory) : IClassFixture<C
     [Fact]
     public async Task Login_WithValidCredentials_Returns200AndSetsCookie()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.PostAsJsonAsync("/api/auth/login",
-            new { email = "admin1@civicflow.dev", password = "CivicFlow@2026!" });
+            new { email = CivicFlowWebAppFactory.AdminEmail, password = CivicFlowWebAppFactory.DefaultPassword });
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         resp.Headers.Should().ContainKey("Set-Cookie");
@@ -22,10 +21,10 @@ public class AuthEndpointTests(CivicFlowWebAppFactory factory) : IClassFixture<C
     [Fact]
     public async Task Login_WithWrongPassword_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.PostAsJsonAsync("/api/auth/login",
-            new { email = "admin1@civicflow.dev", password = "WrongPassword1!" });
+            new { email = CivicFlowWebAppFactory.AdminEmail, password = "WrongPassword1!" });
 
         resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -33,7 +32,7 @@ public class AuthEndpointTests(CivicFlowWebAppFactory factory) : IClassFixture<C
     [Fact]
     public async Task GetMe_WithoutAuth_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.GetAsync("/api/auth/me");
 
@@ -49,18 +48,18 @@ public class AuthEndpointTests(CivicFlowWebAppFactory factory) : IClassFixture<C
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync();
-        body.Should().Contain("admin1@civicflow.dev");
+        body.Should().Contain(CivicFlowWebAppFactory.AdminEmail);
     }
 
     [Fact]
     public async Task Logout_ClearsSession()
     {
         // Use the default client whose cookie jar honors Set-Cookie responses
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         // Login — cookie jar auto-stores the auth cookie
         var loginResp = await client.PostAsJsonAsync("/api/auth/login",
-            new { email = "admin1@civicflow.dev", password = "CivicFlow@2026!" });
+            new { email = CivicFlowWebAppFactory.AdminEmail, password = CivicFlowWebAppFactory.DefaultPassword });
         loginResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Logout — server sends Set-Cookie with Max-Age=0, cookie jar clears it

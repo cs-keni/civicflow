@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using CivicFlow.Application.Common;
 using CivicFlow.Application.DTOs;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CivicFlow.IntegrationTests.Api;
 
@@ -12,7 +11,7 @@ public class PermitsEndpointTests(CivicFlowWebAppFactory factory) : IClassFixtur
     [Fact]
     public async Task GetPermits_WithoutAuth_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.GetAsync("/api/permits");
 
@@ -22,7 +21,7 @@ public class PermitsEndpointTests(CivicFlowWebAppFactory factory) : IClassFixtur
     [Fact]
     public async Task PostPermit_WithoutAuth_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.PostAsJsonAsync("/api/permits", new { });
 
@@ -59,7 +58,7 @@ public class PermitsEndpointTests(CivicFlowWebAppFactory factory) : IClassFixtur
     [Fact]
     public async Task GetFacilities_WithoutAuth_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.GetAsync("/api/facilities");
 
@@ -82,7 +81,7 @@ public class PermitsEndpointTests(CivicFlowWebAppFactory factory) : IClassFixtur
     [Fact]
     public async Task GetInspections_WithoutAuth_Returns401()
     {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var client = factory.CreateUnauthenticatedClient();
 
         var resp = await client.GetAsync("/api/inspections");
 

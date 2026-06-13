@@ -4,6 +4,27 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-13 — /review ASK fixes: CI gate, startup guard, test quality
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Build**: 0 errors | **Tests**: 87 passed (67 unit + 20 integration)
+
+### Changes
+
+- Fixed `.github/workflows/ci.yml` — `test-real-ai` job `if:` now uses `vars.HAS_ANTHROPIC_KEY == 'true'` instead of `secrets.ANTHROPIC_API_KEY != ''`; secrets context is unreliable at job-level, vars is not
+- Added startup validation in `src/CivicFlow.Infrastructure/ServiceRegistration.cs` — throws `InvalidOperationException` at boot if `AI_PROVIDER=claude` and `ANTHROPIC_API_KEY` is missing/empty; fail-fast beats silent null returns
+- Added `CivicFlowWebAppFactory.AdminEmail`, `StaffEmail`, `ApplicantEmail`, `DefaultPassword` constants — credentials now have a single source of truth
+- Added `CivicFlowWebAppFactory.CreateUnauthenticatedClient()` helper — replaces 10+ repetitions of `new WebApplicationFactoryClientOptions { AllowAutoRedirect = false }`
+- Updated `AuthEndpointTests.cs` and `PermitsEndpointTests.cs` to use constants and helper
+- Created `tests/CivicFlow.IntegrationTests/Api/RoleBoundaryTests.cs` — 6 tests: Applicant → 403 on approve/deny/assign permit and delete comment; Staff + Applicant → 403 on admin audit-log endpoint
+
+### Key Decisions
+
+- Used `vars.HAS_ANTHROPIC_KEY` (repo variable) not `env.ANTHROPIC_API_KEY` in job `if:`; variables are accessible in job-level conditions, secrets are not reliably expanded there
+- `RoleBoundaryTests` uses ID=1 for all guarded endpoints — 403 is returned by the authorization filter before the action executes, so no seeded entity is needed
+
+---
+
 ## 2026-06-13 — Pre-Phase-8 /review auto-fixes
 
 **Agent**: Claude Code (claude-sonnet-4-6)
