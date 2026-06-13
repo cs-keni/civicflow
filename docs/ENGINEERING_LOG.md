@@ -4,6 +4,26 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-13 — Phase 8: Portfolio Integration
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Build**: 0 errors | **Tests**: 87 passed (67 unit + 20 integration)
+
+### Changes
+
+- Rewrote `README.md` — added problem statement, Features section (permit lifecycle, AI, SignalR, security/WCAG, T-SQL), Screenshots capture guide, Testing section (87 tests, role boundary coverage), Architecture decision table, T-SQL artifacts section; fixed SignalR resume bullet (removed "(planned — Phase 4 not yet built)" — SignalR was built in Phase 4)
+- Created `docs/screenshots/README.md` — 7-page capture checklist with filenames matching ePortfolio `imageUrls`
+- Updated `PHASES.md` — Phase 8 tasks checked off, SignalR resume bullet corrected
+- Updated `docs/CURRENT_TASK.md` — Phase 8 in-progress, screenshot checklist
+- Updated `ePortfolio/src/data/projects.js` — moved CivicFlow from `ongoingProjects` to `completedProjects`; rewrote description/context/challenge/approach/outcome; rewrote 5 features in "Built X... The impact was Y..." format; corrected tech stack (`HttpOnly cookie (BFF)` not `JWT`; added `WebApplicationFactory`, `FluentAssertions`); added 7 screenshot imageUrls and video stub
+
+### Key Decisions
+
+- Screenshot URLs in ePortfolio reference GitHub raw paths — will resolve once user takes screenshots and commits them to docs/screenshots/
+- v1.0.0 tag deferred until screenshots are committed (ePortfolio imageUrls would 404 otherwise)
+
+---
+
 ## 2026-06-13 — /review ASK fixes: CI gate, startup guard, test quality
 
 **Agent**: Claude Code (claude-sonnet-4-6)

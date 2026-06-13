@@ -229,13 +229,13 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ## Phase 8 — Portfolio Integration
 
-- [ ] Assemble screenshots taken during Phases 3, 4, 5 into README gallery
-- [ ] Write polished README: Problem, Architecture, Setup, Features, Screenshots, AI Integration, Accessibility, Security, Resume Bullets
-- [ ] Record optional demo video walkthrough (two-browser SignalR demo + AI summary generation)
-- [ ] Verify architecture diagram is current and accurate
-- [ ] Write resume bullets (per civicflow.md spec)
-- [ ] Add project to Kenny's ePortfolio (update `src/data/projects.js` in portfolio repo)
-- [ ] Run `/review` and `/qa` on the final state
+- [x] Write polished README: problem statement, features, architecture table, screenshots guide, testing, security & accessibility, resume bullets
+- [x] Verify architecture diagram is current and accurate (confirmed correct)
+- [x] Fix SignalR resume bullet (remove "(planned — Phase 4 not yet built)" — SignalR IS built)
+- [x] Add project to Kenny's ePortfolio (`src/data/projects.js` — moved from ongoingProjects to completedProjects)
+- [x] Create `docs/screenshots/README.md` with capture instructions
+- [ ] Take screenshots (docker compose up → http://localhost:5000 → 7 pages)
+- [ ] Commit screenshots to `docs/screenshots/`
 - [ ] Tag v1.0.0 on main
 
 ---
@@ -245,7 +245,7 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 - Built a production-quality full-stack permit and compliance platform in C#, ASP.NET Core 8, and Blazor WebAssembly with cookie-based BFF auth (OWASP Top 10 A07), entity-specific repositories, and a clean layered architecture targeting government agency workflows used by firms like Windsor Solutions
 - Designed a relational schema in SQL Server with EF Core migrations, SQL Server SEQUENCE objects for concurrency-safe formatted permit numbering, stored procedures and aggregate views for compliance reporting, and audit-log middleware using transactional writes to guarantee regulatory traceability
 - Integrated Claude API (claude-haiku-4-5 and claude-sonnet-4-6) with graceful degradation patterns — advisory features never gate core workflows — and environment-variable-switched mock/real provider abstraction
-- *(planned — Phase 4 not yet built)* Implemented ASP.NET Core SignalR with fire-and-forget hub sends, cookie-authenticated role-scoped groups, and 4 domain-specific hubs enabling live permit queue updates, applicant status notifications, and admin activity feeds
+- Implemented ASP.NET Core SignalR with fire-and-forget hub sends, cookie-authenticated role-scoped groups, and 4 domain-specific hubs enabling live permit queue updates, applicant status notifications, and admin activity feeds
 - Applied WCAG 2.1 AA accessibility (verified with axe + Playwright) and OWASP-aligned security across all pages including FluentValidation server-side validation, HasQueryFilter soft-delete protection, and paginated API endpoints throughout
 
 ---

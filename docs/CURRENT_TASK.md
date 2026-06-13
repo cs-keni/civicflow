@@ -1,32 +1,37 @@
 # Current Task
 
-**Phase**: 7 — Testing
-**Status**: Completed
-**Started**: 2026-06-12
-**Completed**: 2026-06-12
+**Phase**: 8 — Portfolio Integration
+**Status**: In Progress
+**Started**: 2026-06-13
 
 ## Goal
 
-Full test suite: service-layer unit tests (xUnit + Moq + FluentAssertions) and integration tests (WebApplicationFactory + InMemory DB).
-
-## Results
-
-- **Unit tests**: 67 passing (PermitService 9, FacilityService 4, InspectionService 4, AI services 7, existing 43)
-- **Integration tests**: 15 passing (auth flow, 401 guards, paginated endpoints, soft-delete filter, seeded data)
+Polish the project as a portfolio artifact: README gallery, resume bullets, ePortfolio entry, v1.0.0 tag.
 
 ## Subtasks
 
-- [x] CivicFlowWebAppFactory (InMemory DB, relaxed cookie policy, login helper)
-- [x] SeedData.cs: EnsureCreatedAsync() for InMemory vs MigrateAsync() for SQL Server
-- [x] AuthEndpointTests: 5 tests (login, wrong password, /me auth guard, /me returns email, logout clears cookie)
-- [x] PermitsEndpointTests: 7 tests (401 guards, paginated result shape, seeded facilities)
-- [x] SoftDeleteIntegrationTests: 1 test (ReviewComment soft-delete filter)
-- [x] ClaudeConnectivityTest: 1 test (skips unless AI_PROVIDER=claude)
-- [x] PermitServiceTests: 9 unit tests (Create, Get, Submit, Approve, Deny + role guards)
-- [x] FacilityServiceTests: 4 unit tests (ownership, staff access)
-- [x] InspectionServiceTests: 4 unit tests (role guard, AI happy path, AI null fallback)
-- [x] README credentials corrected (admin1@civicflow.dev / CivicFlow@2026!)
+- [x] Polish README: problem statement, features, screenshots section, architecture table, testing section, resume bullets
+- [x] Fix SignalR resume bullet (remove "(planned — Phase 4 not yet built)" — SignalR IS built)
+- [x] Create docs/screenshots/ directory with capture instructions
+- [x] Update ePortfolio projects.js: move CivicFlow from ongoingProjects → completedProjects
+- [ ] Take screenshots (docker compose up → http://localhost:5000 → capture 7 pages)
+- [ ] Commit screenshots to docs/screenshots/
+- [ ] Tag v1.0.0 on main
+
+## Screenshot Checklist
+
+Run `docker compose up --build` then capture:
+
+1. `/login` → Login form with demo credentials visible
+2. `/dashboard` (as Admin) → Stat cards + recent activity
+3. `/permits` → Permit list with status badges and pagination
+4. `/permits/new` → Step 2 wizard with AI suggestions panel loaded
+5. `/permits/{id}` → Permit detail with review actions + history + comments
+6. `/inspections/{id}` (Completed) → Inspection with AI public summary card
+7. `/public/search` → Unauthenticated facility search
+
+Save as `.jpg` in `docs/screenshots/` with names matching the ePortfolio imageUrls.
 
 ## Next Phase
 
-Phase 8 — Portfolio Integration (screenshots, polished README, demo video, v1.0.0 tag)
+None — this is the final phase. Tag v1.0.0 when screenshots are committed.
