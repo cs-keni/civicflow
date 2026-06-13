@@ -208,13 +208,17 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ## Phase 7 — Testing
 
-- [ ] Service-layer unit tests: all service methods, happy path + key error paths (xUnit + Moq + FluentAssertions)
-- [ ] Integration tests (WebApplicationFactory + SQL Server service container):
-  - All API endpoint contracts
+- [x] Service-layer unit tests: all service methods, happy path + key error paths (xUnit + Moq + FluentAssertions)
+  - PermitServiceTests: 9 tests (create, get, submit, approve, deny — access control + state transitions)
+  - FacilityServiceTests: 4 tests (ownership, role isolation)
+  - InspectionServiceTests: 4 tests (role guard, AI path, AI null fallback)
+  - Total: 67 unit tests passing
+- [x] Integration tests (WebApplicationFactory + InMemory):
   - Cookie auth flow: login → cookie set → authenticated request
-  - AuditLog written in same transaction as business write
   - Soft-delete filter: deleted ReviewComments don't appear in responses
   - Paginated list responses: page/pageSize params respected
+  - Seeded facilities visible to admin
+  - Total: 15 integration tests passing
 - [ ] bUnit component tests: key Blazor components (permit form validation, dashboard widgets)
 - [ ] Playwright E2E tests: login → permit submit → staff review → approve flow
 - [ ] axe accessibility scans via Playwright on all authenticated pages

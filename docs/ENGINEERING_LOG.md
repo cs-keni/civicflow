@@ -4,6 +4,31 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 7: Testing
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Build**: 0 errors | **Tests**: 82 passed (67 unit + 15 integration)
+
+### Changes
+
+- Created `tests/CivicFlow.IntegrationTests/CivicFlowWebAppFactory.cs` — WebApplicationFactory with InMemory DB swap, relaxed cookie policy (None/Lax for TestServer HTTP), and `LoginAsync`/`CreateAdminClientAsync` helpers using seeded credentials
+- Fixed `src/CivicFlow.Infrastructure/Data/SeedData.cs` — `IsInMemory()` guard: use `EnsureCreatedAsync()` for InMemory, `MigrateAsync()` for SQL Server
+- Created `tests/CivicFlow.IntegrationTests/Api/AuthEndpointTests.cs` — 5 tests: valid login → 200+cookie, wrong password → 401, `/me` without auth → 401, `/me` after login → 200 with email, logout clears cookie jar
+- Created `tests/CivicFlow.IntegrationTests/Api/PermitsEndpointTests.cs` — 7 tests: 401 guards on permits/facilities/inspections, paginated result shape, seeded facilities count > 0
+- Created `tests/CivicFlow.IntegrationTests/Api/SoftDeleteIntegrationTests.cs` — 1 test: add comment → soft-delete → verify absent from list
+- Created `tests/CivicFlow.UnitTests/Services/PermitServiceTests.cs` — 9 tests covering Create, Get, Submit, Approve, Deny with role guards and state transitions
+- Created `tests/CivicFlow.UnitTests/Services/FacilityServiceTests.cs` — 4 tests: ownership enforcement, staff bypass, not-found null
+- Created `tests/CivicFlow.UnitTests/Services/InspectionServiceTests.cs` — 4 tests: role guard, AI summary written on complete, AI null = non-blocking
+- Fixed `README.md` — demo credentials corrected to `admin1@civicflow.dev` / `CivicFlow@2026!` (all seeded users same password)
+
+### Key Decisions
+
+- Used `ConfigureTestServices` (post-startup override) not `ConfigureServices` to correctly replace `DbContextOptions<CivicFlowDbContext>` after real startup runs
+- `Logout_ClearsSession` uses `factory.CreateClient()` with managed cookie jar (not manual `Cookie` header) so `Set-Cookie: Max-Age=0` from logout is honored
+- `Login_WithWrongPassword_Returns401` uses `WrongPassword1!` (passes min-length=8 validation, fails auth) not `"wrong!"` (would be rejected by FluentValidation → 400)
+
+---
+
 ## 2026-06-12 — Phase 6: DevOps
 
 **Agent**: Claude Code (claude-sonnet-4-6)

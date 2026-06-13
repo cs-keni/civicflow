@@ -120,10 +120,10 @@ open http://localhost:5000
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@civicflow.dev | Admin1234! |
-| Agency Staff | staff@civicflow.dev | Staff1234! |
-| Inspector | inspector@civicflow.dev | Inspector1234! |
-| Applicant | applicant@civicflow.dev | Applicant1234! |
+| Admin | admin1@civicflow.dev | CivicFlow@2026! |
+| Agency Staff | staff1@civicflow.dev | CivicFlow@2026! |
+| Inspector | inspector1@civicflow.dev | CivicFlow@2026! |
+| Applicant | applicant1@civicflow.dev | CivicFlow@2026! |
 
 ---
 
