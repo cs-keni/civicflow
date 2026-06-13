@@ -19,7 +19,7 @@ public class PermitsController(
 {
     [HttpGet("ai-suggestions")]
     public async Task<ActionResult<List<string>>> GetAiSuggestions(
-        [FromQuery] int facilityId, [FromQuery] string permitType)
+        [FromQuery] string? permitType)
     {
         var suggestions = await permitAI.ValidateApplicationFieldsAsync("", "", permitType ?? "");
         return Ok(suggestions);

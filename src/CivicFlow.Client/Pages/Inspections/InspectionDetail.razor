@@ -164,10 +164,14 @@ else
     {
         _savingSummary = true;
         _error = null;
-        await Api.UpdatePublicSummaryAsync(Id, _editedSummary);
-        _inspection = await Api.GetInspectionAsync(Id);
-        _editedSummary = _inspection?.PublicSummary ?? _editedSummary;
-        _success = "Public summary saved.";
+        var (_, error) = await Api.UpdatePublicSummaryAsync(Id, _editedSummary);
+        if (error is not null) { _error = error; }
+        else
+        {
+            _inspection = await Api.GetInspectionAsync(Id);
+            _editedSummary = _inspection?.PublicSummary ?? _editedSummary;
+            _success = "Public summary saved.";
+        }
         _savingSummary = false;
     }
 }

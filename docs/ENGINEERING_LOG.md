@@ -4,6 +4,21 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — /review fixes: Phase 5 P1+P2 bugs
+
+**Agent**: Claude Code (claude-sonnet-4-6) via /review
+**Build**: 0 errors | **Tests**: 50 passed
+
+### Changes
+
+- `CivicFlow.Client/Services/CivicFlowApiClient.cs` — `UpdatePublicSummaryAsync` changed from `void` to `(InspectionDto? dto, string? error)` so the caller can detect failure
+- `CivicFlow.Client/Pages/Inspections/InspectionDetail.razor` — `SaveSummaryAsync` now checks error; shows `_error` on failure instead of false-success banner
+- `CivicFlow.API/Controllers/PermitsController.cs` — Removed dead `facilityId` param from `GET /api/permits/ai-suggestions`; typed `permitType` as `string?`
+- `CivicFlow.Infrastructure/Services/MockAIServices.cs` — `MockInspectionAIService.GeneratePublicSummaryAsync` now returns null for empty fieldNotes (matches Claude behavior)
+- `tests/CivicFlow.UnitTests/Services/MockAIServiceTests.cs` — Added `Returns_Null_For_Empty_FieldNotes` test to cover the divergence fix
+
+---
+
 ## 2026-06-12 — Phase 5: AI Integration (Claude API)
 
 **Agent**: Claude Code (claude-sonnet-4-6) via /plan-eng-review + implementation

@@ -50,6 +50,13 @@ public class MockInspectionAIServiceTests
     }
 
     [Fact]
+    public async Task Returns_Null_For_Empty_FieldNotes()
+    {
+        var result = await _svc.GeneratePublicSummaryAsync("", "Acme Corp", "Fire Safety");
+        result.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Interpolates_FacilityName()
     {
         var result = await _svc.GeneratePublicSummaryAsync("Notes here.", "Riverdale Plant", "Food Safety");

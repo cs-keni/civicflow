@@ -23,6 +23,7 @@ public class MockInspectionAIService : IInspectionAIService
     public Task<string?> GeneratePublicSummaryAsync(
         string fieldNotes, string facilityName, string inspectionType)
     {
+        if (string.IsNullOrWhiteSpace(fieldNotes)) return Task.FromResult<string?>(null);
         var summary =
             $"Inspection of {facilityName} was completed on schedule. " +
             $"The facility met all applicable {inspectionType} standards. " +

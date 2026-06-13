@@ -136,8 +136,11 @@ public class CivicFlowApiClient(HttpClient http)
         return await ParseResult<InspectionDto>(resp, "Failed to cancel inspection");
     }
 
-    public async Task UpdatePublicSummaryAsync(int id, string summary) =>
-        await http.PutAsJsonAsync($"api/inspections/{id}/public-summary", new UpdatePublicSummaryRequest(summary));
+    public async Task<(InspectionDto? dto, string? error)> UpdatePublicSummaryAsync(int id, string summary)
+    {
+        var resp = await http.PutAsJsonAsync($"api/inspections/{id}/public-summary", new UpdatePublicSummaryRequest(summary));
+        return await ParseResult<InspectionDto>(resp, "Failed to save public summary");
+    }
 
     // ── Violations ────────────────────────────────────────────────────────────
 
