@@ -204,7 +204,7 @@ else if (_step == 3)
         _aiSuggestions = [];
         StateHasChanged();
 
-        var suggestions = await Api.GetPermitAiSuggestionsAsync(_model.FacilityId, _model.PermitType);
+        var suggestions = await Api.GetPermitAiSuggestionsAsync(_model.PermitType);
         if (suggestions is null)
             _aiError = true;
         else

@@ -1,5 +1,6 @@
 using Anthropic.SDK;
 using CivicFlow.Infrastructure.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CivicFlow.IntegrationTests;
 
@@ -25,7 +26,7 @@ public class ClaudeConnectivityTest
         }
 
         var client = new AnthropicClient(new APIAuthentication(apiKey));
-        var svc = new ClaudePermitAIService(client);
+        var svc = new ClaudePermitAIService(client, NullLogger<ClaudePermitAIService>.Instance);
 
         var result = await svc.ValidateApplicationFieldsAsync("", "", "Building");
 

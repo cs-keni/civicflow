@@ -137,41 +137,50 @@ else
     {
         _actioning = true;
         _error = null;
-        var req = new CompleteInspectionRequest(
-            _completeModel.FieldNotes, _completeModel.OverallRating, DateTime.UtcNow);
-        var (result, error) = await Api.CompleteInspectionAsync(Id, req);
-        if (error is not null) _error = error;
-        else
+        try
         {
-            _success = "Inspection marked complete.";
-            _inspection = await Api.GetInspectionAsync(Id);
-            _editedSummary = _inspection?.PublicSummary ?? "";
+            var req = new CompleteInspectionRequest(
+                _completeModel.FieldNotes, _completeModel.OverallRating, DateTime.UtcNow);
+            var (result, error) = await Api.CompleteInspectionAsync(Id, req);
+            if (error is not null) _error = error;
+            else
+            {
+                _success = "Inspection marked complete.";
+                _inspection = await Api.GetInspectionAsync(Id);
+                _editedSummary = _inspection?.PublicSummary ?? "";
+            }
         }
-        _actioning = false;
+        finally { _actioning = false; }
     }
 
     private async Task CancelAsync()
     {
         _actioning = true;
         _error = null;
-        var (_, error) = await Api.CancelInspectionAsync(Id);
-        if (error is not null) _error = error;
-        else { _success = "Inspection cancelled."; _inspection = await Api.GetInspectionAsync(Id); }
-        _actioning = false;
+        try
+        {
+            var (_, error) = await Api.CancelInspectionAsync(Id);
+            if (error is not null) _error = error;
+            else { _success = "Inspection cancelled."; _inspection = await Api.GetInspectionAsync(Id); }
+        }
+        finally { _actioning = false; }
     }
 
     private async Task SaveSummaryAsync()
     {
         _savingSummary = true;
         _error = null;
-        var (_, error) = await Api.UpdatePublicSummaryAsync(Id, _editedSummary);
-        if (error is not null) { _error = error; }
-        else
+        try
         {
-            _inspection = await Api.GetInspectionAsync(Id);
-            _editedSummary = _inspection?.PublicSummary ?? _editedSummary;
-            _success = "Public summary saved.";
+            var (_, error) = await Api.UpdatePublicSummaryAsync(Id, _editedSummary);
+            if (error is not null) { _error = error; }
+            else
+            {
+                _inspection = await Api.GetInspectionAsync(Id);
+                _editedSummary = _inspection?.PublicSummary ?? _editedSummary;
+                _success = "Public summary saved.";
+            }
         }
-        _savingSummary = false;
+        finally { _savingSummary = false; }
     }
 }

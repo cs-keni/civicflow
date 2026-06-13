@@ -4,6 +4,30 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-13 — Pre-Phase-8 /review auto-fixes
+
+**Agent**: Claude Code (claude-sonnet-4-6)
+**Build**: 0 errors | **Tests**: 81 passed (67 unit + 14 integration)
+
+### Changes
+
+- Deleted `tests/CivicFlow.IntegrationTests/UnitTest1.cs` — dead scaffold (vacuously-passing empty test)
+- Fixed `tests/CivicFlow.IntegrationTests/Api/SoftDeleteIntegrationTests.cs:25` — replaced silent `return` with `Should().NotBeEmpty()` assertion so seeding failures are caught, not silently skipped
+- Fixed `tests/CivicFlow.IntegrationTests/CivicFlowWebAppFactory.cs` — `LoginAsync` now filters `Set-Cookie` by cookie name (`civicflow_auth=`) instead of `FirstOrDefault()`, preventing silent wrong-cookie returns if auth cookie isn't first
+- Fixed `src/CivicFlow.Client/Services/CivicFlowApiClient.cs` — removed stale `facilityId` parameter from `GetPermitAiSuggestionsAsync`; server endpoint only takes `permitType`
+- Fixed `src/CivicFlow.Client/Pages/Permits/PermitNew.razor` — updated `GetPermitAiSuggestionsAsync` call site to match new signature
+- Fixed `src/CivicFlow.Client/Pages/Inspections/InspectionDetail.razor` — added `try/finally` to `CompleteAsync`, `CancelAsync`, and `SaveSummaryAsync` so `_actioning`/`_savingSummary` reset even on `HttpRequestException`
+- Fixed `src/CivicFlow.Infrastructure/Services/ClaudePermitAIService.cs` — replaced bare `catch { return []; }` with logged `LogWarning` including exception and permitType
+- Fixed `src/CivicFlow.Infrastructure/Services/ClaudeInspectionAIService.cs` — replaced bare `catch { return null; }` with logged `LogWarning` including exception and facilityName
+- Fixed `tests/CivicFlow.IntegrationTests/ClaudeConnectivityTest.cs` — updated `ClaudePermitAIService` instantiation to pass `NullLogger<ClaudePermitAIService>.Instance` for new ctor signature
+
+### Key Decisions
+
+- Used `NullLogger` (not `NullLoggerFactory`) in the connectivity smoke test — simpler, no DI overhead, test still validates real Claude connectivity
+- `try/finally` pattern in Blazor event handlers: ensures buttons re-enable on any failure path, not just clean success/error returns from the API
+
+---
+
 ## 2026-06-12 — Phase 7: Testing
 
 **Agent**: Claude Code (claude-sonnet-4-6)

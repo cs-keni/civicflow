@@ -22,7 +22,7 @@ public class SoftDeleteIntegrationTests(CivicFlowWebAppFactory factory) : IClass
         permitsResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var permits = await permitsResp.Content.ReadFromJsonAsync<CivicFlow.Application.Common.PaginatedResult<PermitApplicationSummaryDto>>();
         permits.Should().NotBeNull();
-        if (permits!.Items.Count == 0) return; // no permits seeded, skip
+        permits!.Items.Should().NotBeEmpty("seeded permits must exist for soft-delete test to run");
 
         var permitId = permits.Items[0].Id;
 

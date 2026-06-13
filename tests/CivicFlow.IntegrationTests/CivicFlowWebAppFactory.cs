@@ -49,7 +49,8 @@ public class CivicFlowWebAppFactory : WebApplicationFactory<Program>
         resp.EnsureSuccessStatusCode();
 
         // Set-Cookie: civicflow_auth=<token>; Path=/; HttpOnly; SameSite=Lax
-        var setCookie = resp.Headers.GetValues("Set-Cookie").FirstOrDefault() ?? "";
+        var setCookie = resp.Headers.GetValues("Set-Cookie")
+            .FirstOrDefault(c => c.StartsWith("civicflow_auth=", StringComparison.OrdinalIgnoreCase)) ?? "";
         return setCookie.Split(';')[0]; // strip Path/HttpOnly/SameSite attributes
     }
 

@@ -1,10 +1,11 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Messaging;
 using CivicFlow.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace CivicFlow.Infrastructure.Services;
 
-public class ClaudePermitAIService(AnthropicClient client) : IPermitAIService
+public class ClaudePermitAIService(AnthropicClient client, ILogger<ClaudePermitAIService> logger) : IPermitAIService
 {
     public async Task<List<string>> ValidateApplicationFieldsAsync(
         string description, string projectDetails, string permitType)
@@ -41,6 +42,10 @@ public class ClaudePermitAIService(AnthropicClient client) : IPermitAIService
                 .Where(l => l.Length > 0)
                 .ToList();
         }
-        catch { return []; }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Claude permit AI call failed for permitType={PermitType}", permitType);
+            return [];
+        }
     }
 }

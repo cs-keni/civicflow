@@ -100,12 +100,12 @@ public class CivicFlowApiClient(HttpClient http)
         return await ParseResult<ReviewCommentDto>(resp, "Failed to add comment");
     }
 
-    public async Task<List<string>?> GetPermitAiSuggestionsAsync(int facilityId, string permitType)
+    public async Task<List<string>?> GetPermitAiSuggestionsAsync(string permitType)
     {
         try
         {
             return await http.GetFromJsonAsync<List<string>>(
-                $"api/permits/ai-suggestions?facilityId={facilityId}&permitType={Uri.EscapeDataString(permitType)}");
+                $"api/permits/ai-suggestions?permitType={Uri.EscapeDataString(permitType)}");
         }
         catch { return null; }
     }

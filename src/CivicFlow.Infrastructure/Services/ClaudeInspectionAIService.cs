@@ -1,10 +1,11 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Messaging;
 using CivicFlow.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace CivicFlow.Infrastructure.Services;
 
-public class ClaudeInspectionAIService(AnthropicClient client) : IInspectionAIService
+public class ClaudeInspectionAIService(AnthropicClient client, ILogger<ClaudeInspectionAIService> logger) : IInspectionAIService
 {
     public async Task<string?> GeneratePublicSummaryAsync(
         string fieldNotes, string facilityName, string inspectionType)
@@ -39,6 +40,10 @@ public class ClaudeInspectionAIService(AnthropicClient client) : IInspectionAISe
 
             return text.Trim();
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Claude inspection AI call failed for facility={FacilityName}", facilityName);
+            return null;
+        }
     }
 }
