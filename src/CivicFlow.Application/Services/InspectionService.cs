@@ -11,7 +11,8 @@ public class InspectionService(
     IFacilityRepository facilityRepo,
     IPermitRepository permitRepo,
     ICurrentUserService currentUser,
-    IRealtimeNotifier notifier) : IInspectionService
+    IRealtimeNotifier notifier,
+    IInspectionAIService ai) : IInspectionService
 {
     public async Task<PaginatedResult<InspectionSummaryDto>> GetInspectionsAsync(int page, int pageSize)
     {
@@ -88,9 +89,14 @@ public class InspectionService(
         inspection.OverallRating = request.OverallRating;
         inspection.CompletedDate = request.CompletedDate;
 
+        var facility = await facilityRepo.GetByIdAsync(inspection.FacilityId);
+        inspection.PublicSummary = await ai.GeneratePublicSummaryAsync(
+            inspection.FieldNotes ?? "",
+            facility?.LegalName ?? "",
+            inspection.InspectionType.ToString());
+
         await inspectionRepo.UpdateAsync(inspection);
 
-        var facility = await facilityRepo.GetByIdAsync(inspection.FacilityId);
         var permit = await permitRepo.GetByIdAsync(inspection.PermitApplicationId);
         var dto = ToDetailDto(inspection, facility?.LegalName ?? "", permit?.ApplicationNumber ?? "");
 
@@ -103,7 +109,7 @@ public class InspectionService(
     {
         var inspection = await inspectionRepo.GetByIdAsync(id);
         if (inspection is null) return null;
-        if (!currentUser.IsAdminOrStaff) return null;
+        if (!currentUser.IsAdminOrStaff && !currentUser.IsInspector) return null;
 
         inspection.PublicSummary = publicSummary;
         await inspectionRepo.UpdateAsync(inspection);

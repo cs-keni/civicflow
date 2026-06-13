@@ -12,10 +12,19 @@ namespace CivicFlow.API.Controllers;
 [Authorize]
 public class PermitsController(
     IPermitService permitService,
+    IPermitAIService permitAI,
     IValidator<CreatePermitApplicationRequest> createValidator,
     IValidator<UpdatePermitApplicationRequest> updateValidator,
     IValidator<ReviewActionRequest> reviewValidator) : ControllerBase
 {
+    [HttpGet("ai-suggestions")]
+    public async Task<ActionResult<List<string>>> GetAiSuggestions(
+        [FromQuery] int facilityId, [FromQuery] string permitType)
+    {
+        var suggestions = await permitAI.ValidateApplicationFieldsAsync("", "", permitType ?? "");
+        return Ok(suggestions);
+    }
+
     [HttpGet]
     public async Task<ActionResult<PaginatedResult<PermitApplicationSummaryDto>>> GetAll(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20)

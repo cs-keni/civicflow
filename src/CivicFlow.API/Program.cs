@@ -65,7 +65,7 @@ builder.Services.ConfigureApplicationCookie(opts =>
 });
 
 // ── Infrastructure DI ─────────────────────────────────────────────────────────
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── FluentValidation ──────────────────────────────────────────────────────────
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>();

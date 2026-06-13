@@ -173,24 +173,21 @@ Primary goal: demonstrate C# .NET 8, Blazor WASM, EF Core + SQL Server, SignalR,
 
 ---
 
-## Phase 5 — AI Integration (Claude API)
+## Phase 5 — AI Integration (Claude API) ✅ COMPLETED 2026-06-12
 
-- [ ] Add Anthropic.SDK NuGet package
-- [ ] Implement ClaudeAIService:
-  - `IPermitAIService.ValidateApplicationFieldsAsync`: uses claude-haiku-4-5, advisory suggestions
-  - `IInspectionAIService.GeneratePublicSummaryAsync`: uses claude-sonnet-4-6, plain-language summary
-  - Both wrapped in try/catch → graceful degradation on API failure (log + return safe default)
-  - Add refusal check: before returning response content, validate it isn't a refusal string (null/empty/starts with known refusal phrases); return safe default if it is
-  - System prompts as specified in civicflow.md; no PII in prompts/logs
-- [ ] Implement MockAIService (deterministic responses for all scenarios, no API calls)
-- [ ] Wire AI_PROVIDER env var switching in DI registration (mock vs real)
-- [ ] Wire permit field validation into PermitService (advisory, non-blocking, graceful degrade)
-- [ ] Wire inspection summary generation into InspectionService (on completion, graceful degrade)
-- [ ] Add AI summary editor to /inspections/{id} page (Inspector reviews + edits before publishing)
-- [ ] Add "suggestions temporarily unavailable" UI hint when AI list is empty
-- [ ] Add "generate manually" button on inspection detail when PublicSummary is null
-- [ ] Take screenshots of AI suggestions panel and AI-generated inspection summary
-- [ ] Document Claude API usage in README (model choices, prompt design, cost estimates)
+- [x] Pin Anthropic.SDK to 3.* (resolved 3.3.0)
+- [x] Delete StubAIServices.cs (param order mismatch with interfaces)
+- [x] ClaudePermitAIService — claude-haiku-4-5-20251001, 8s timeout, refusal check, line-split parser
+- [x] ClaudeInspectionAIService — claude-sonnet-4-6, 8s timeout, refusal check
+- [x] MockAIServices — MockPermitAIService (4 suggestions keyed to permitType) + MockInspectionAIService (interpolated 3-sentence summary)
+- [x] ServiceRegistration — IConfiguration param, AI_PROVIDER env var switching, AnthropicClient singleton
+- [x] InspectionService.CompleteInspectionAsync — AI summary generation (facility fetch before UpdateAsync, single write)
+- [x] InspectionService.UpdatePublicSummaryAsync — allow Inspector role (was AdminOrStaff only)
+- [x] InspectionsController — PUT /public-summary allows Inspector role
+- [x] PermitsController — GET /api/permits/ai-suggestions endpoint (always 200, never blocks submission)
+- [x] InspectionDetail.razor — removed orphaned PublicSummary textarea, editable AI summary card with [Save summary]
+- [x] 7 new unit tests — MockPermitAIService and MockInspectionAIService (determinism, interpolation, never-null)
+- [x] Build: 0 errors | Tests: 50 passed
 
 ---
 

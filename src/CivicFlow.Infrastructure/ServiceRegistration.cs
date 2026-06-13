@@ -1,15 +1,17 @@
+using Anthropic.SDK;
 using CivicFlow.Application.Common;
 using CivicFlow.Application.Interfaces;
 using CivicFlow.Application.Services;
 using CivicFlow.Infrastructure.Repositories;
 using CivicFlow.Infrastructure.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CivicFlow.Infrastructure;
 
 public static class ServiceRegistration
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         // Audit context — populated per-request by AuditLogMiddleware
         services.AddScoped<IAuditContext, AuditContext>();
@@ -35,10 +37,18 @@ public static class ServiceRegistration
         services.AddScoped<IViolationService, ViolationService>();
         services.AddScoped<IAuditService, AuditService>();
 
-        // AI services (Phase 5 — stubs registered in Phase 2 so controllers compile)
-        // Actual Claude / Mock implementations added in Phase 5
-        services.AddScoped<IPermitAIService, StubPermitAIService>();
-        services.AddScoped<IInspectionAIService, StubInspectionAIService>();
+        // AI services — switch between real Claude and deterministic Mock via AI_PROVIDER env var
+        if (string.Equals(config["AI_PROVIDER"], "claude", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton(_ => new AnthropicClient(new APIAuthentication(config["ANTHROPIC_API_KEY"] ?? "")));
+            services.AddScoped<IPermitAIService, ClaudePermitAIService>();
+            services.AddScoped<IInspectionAIService, ClaudeInspectionAIService>();
+        }
+        else
+        {
+            services.AddScoped<IPermitAIService, MockPermitAIService>();
+            services.AddScoped<IInspectionAIService, MockInspectionAIService>();
+        }
 
         // Real-time notifier — null fallback; overridden in Program.cs with SignalRNotifier
         services.AddScoped<IRealtimeNotifier, NullRealtimeNotifier>();

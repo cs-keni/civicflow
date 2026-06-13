@@ -64,10 +64,6 @@ else
                         <label for="findings" class="cf-form-label">Field notes <span aria-hidden="true">*</span></label>
                         <textarea id="findings" class="cf-textarea" rows="4" @bind="_completeModel.FieldNotes" />
                     </div>
-                    <div class="cf-form-group">
-                        <label for="publicSummary" class="cf-form-label">Public summary (optional)</label>
-                        <textarea id="publicSummary" class="cf-textarea" rows="2" @bind="_completeModel.PublicSummary" />
-                    </div>
                     <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem">
                         <button class="cf-btn cf-btn-danger cf-btn-sm" @onclick="CancelAsync" disabled="@_actioning">Cancel inspection</button>
                         <button class="cf-btn cf-btn-success" @onclick="CompleteAsync"
@@ -80,11 +76,25 @@ else
             </div>
         }
 
-        @if (!string.IsNullOrEmpty(_inspection.PublicSummary))
+        @if (_inspection.Status is "Completed")
         {
             <div class="cf-card">
                 <div class="cf-card-header"><h2 style="margin:0;font-size:1rem">Public Summary</h2></div>
-                <div class="cf-card-body"><p style="margin:0">@_inspection.PublicSummary</p></div>
+                <div class="cf-card-body">
+                    @if (string.IsNullOrEmpty(_inspection.PublicSummary))
+                    {
+                        <p class="cf-muted" style="margin:0 0 .75rem">AI summary unavailable. Write one below.</p>
+                    }
+                    <textarea class="cf-textarea" rows="4" @bind="_editedSummary"
+                              placeholder="Write a plain-language summary for the public…" />
+                    <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
+                        <button class="cf-btn cf-btn-primary cf-btn-sm" @onclick="SaveSummaryAsync"
+                                disabled="@(_savingSummary || string.IsNullOrWhiteSpace(_editedSummary))"
+                                aria-busy="@_savingSummary">
+                            Save summary
+                        </button>
+                    </div>
+                </div>
             </div>
         }
 
@@ -103,7 +113,9 @@ else
 
     private bool _loading = true;
     private bool _actioning;
+    private bool _savingSummary;
     private string? _error, _success;
+    private string _editedSummary = "";
 
     private InspectionDto? _inspection;
     private CompleteModel _completeModel = new();
@@ -112,12 +124,12 @@ else
     {
         public string OverallRating { get; set; } = "";
         public string FieldNotes { get; set; } = "";
-        public string? PublicSummary { get; set; }
     }
 
     protected override async Task OnInitializedAsync()
     {
         _inspection = await Api.GetInspectionAsync(Id);
+        _editedSummary = _inspection?.PublicSummary ?? "";
         _loading = false;
     }
 
@@ -127,9 +139,14 @@ else
         _error = null;
         var req = new CompleteInspectionRequest(
             _completeModel.FieldNotes, _completeModel.OverallRating, DateTime.UtcNow);
-        var (_, error) = await Api.CompleteInspectionAsync(Id, req);
+        var (result, error) = await Api.CompleteInspectionAsync(Id, req);
         if (error is not null) _error = error;
-        else { _success = "Inspection marked complete."; _inspection = await Api.GetInspectionAsync(Id); }
+        else
+        {
+            _success = "Inspection marked complete.";
+            _inspection = await Api.GetInspectionAsync(Id);
+            _editedSummary = _inspection?.PublicSummary ?? "";
+        }
         _actioning = false;
     }
 
@@ -141,5 +158,16 @@ else
         if (error is not null) _error = error;
         else { _success = "Inspection cancelled."; _inspection = await Api.GetInspectionAsync(Id); }
         _actioning = false;
+    }
+
+    private async Task SaveSummaryAsync()
+    {
+        _savingSummary = true;
+        _error = null;
+        await Api.UpdatePublicSummaryAsync(Id, _editedSummary);
+        _inspection = await Api.GetInspectionAsync(Id);
+        _editedSummary = _inspection?.PublicSummary ?? _editedSummary;
+        _success = "Public summary saved.";
+        _savingSummary = false;
     }
 }

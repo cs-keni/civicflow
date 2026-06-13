@@ -4,6 +4,33 @@ One entry per session. Most recent at the top.
 
 ---
 
+## 2026-06-12 — Phase 5: AI Integration (Claude API)
+
+**Agent**: Claude Code (claude-sonnet-4-6) via /plan-eng-review + implementation
+**Build**: 0 errors | **Tests**: 50 passed (7 new AI service tests)
+
+### Changes
+
+- `CivicFlow.Infrastructure.csproj` — Pinned `Anthropic.SDK` from `*` to `3.*` (resolved: 3.3.0)
+- `CivicFlow.Infrastructure/Services/StubAIServices.cs` — DELETED (param order mismatch; replaced by Mock)
+- `CivicFlow.Infrastructure/Services/ClaudePermitAIService.cs` — NEW: Implements `IPermitAIService` via `claude-haiku-4-5-20251001`. 8s timeout, refusal check, line-split parser. Returns `[]` on any failure.
+- `CivicFlow.Infrastructure/Services/ClaudeInspectionAIService.cs` — NEW: Implements `IInspectionAIService` via `claude-sonnet-4-6`. Same patterns; returns `null` on failure.
+- `CivicFlow.Infrastructure/Services/MockAIServices.cs` — NEW: `MockPermitAIService` (4 deterministic suggestions keyed to permitType) + `MockInspectionAIService` (interpolated 3-sentence summary). Zero latency, zero API calls.
+- `CivicFlow.Infrastructure/ServiceRegistration.cs` — Added `IConfiguration config` parameter. `AI_PROVIDER=claude` → Claude services + `AnthropicClient` singleton. Otherwise → Mock services. Updated call site in Program.cs.
+- `CivicFlow.API/Program.cs` — `AddInfrastructure()` → `AddInfrastructure(builder.Configuration)`
+- `CivicFlow.Application/Services/InspectionService.cs` — Added `IInspectionAIService ai` to constructor. `CompleteInspectionAsync` now: fetches facility BEFORE UpdateAsync, calls `ai.GeneratePublicSummaryAsync(...)`, stores result in `inspection.PublicSummary` in the single UpdateAsync write. Also fixed `UpdatePublicSummaryAsync` to allow Inspector role (was: AdminOrStaff only).
+- `CivicFlow.API/Controllers/InspectionsController.cs` — `PUT {id}/public-summary` changed from `[Authorize(Roles = "Admin,AgencyStaff")]` to `[Authorize(Roles = "Admin,AgencyStaff,Inspector")]`
+- `CivicFlow.API/Controllers/PermitsController.cs` — Added `IPermitAIService permitAI` to constructor. New `GET api/permits/ai-suggestions?facilityId={}&permitType={}` endpoint — always returns 200 with List<string> (never 4xx).
+- `CivicFlow.Client/Pages/Inspections/InspectionDetail.razor` — Removed orphaned `PublicSummary` textarea from complete form (was never sent to API). Made PublicSummary card editable: inline textarea pre-filled with AI summary, [Save summary] button → `PUT api/inspections/{id}/public-summary`. Shows "AI summary unavailable" hint when null.
+- `tests/CivicFlow.UnitTests/Services/MockAIServiceTests.cs` — NEW: 7 tests for MockPermitAIService and MockInspectionAIService (determinism, interpolation, never-null contract, refusal contract)
+
+### Architecture decisions
+
+- `AnthropicClient` registered as `AddSingleton` (HTTP pooling, thread-safe). Claude service implementations are `AddScoped` — scoped consuming singleton is safe in ASP.NET DI graph.
+- AI call in `CompleteInspectionAsync` is synchronous (try/catch). Inspector waits 1-3s on real Claude; instant on Mock. Graceful degrade: null summary on any failure, inspection still completes.
+- Permit AI endpoint returns empty list on failure — never blocks form submission.
+- `AI_PROVIDER=mock` (default in Docker Compose) → zero network calls, deterministic demo data.
+
 ## 2026-06-12 — /review: Fix 4 P1 SignalR bugs
 
 **Agent**: Claude Code (claude-sonnet-4-6) via /review skill

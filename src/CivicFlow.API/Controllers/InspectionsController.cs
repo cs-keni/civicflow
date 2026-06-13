@@ -50,7 +50,7 @@ public class InspectionsController(
     }
 
     [HttpPut("{id:int}/public-summary")]
-    [Authorize(Roles = "Admin,AgencyStaff")]
+    [Authorize(Roles = "Admin,AgencyStaff,Inspector")]
     public async Task<ActionResult<InspectionDto>> UpdatePublicSummary(int id, [FromBody] UpdatePublicSummaryRequest request)
     {
         var inspection = await inspectionService.UpdatePublicSummaryAsync(id, request.PublicSummary);

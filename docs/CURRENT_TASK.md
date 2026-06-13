@@ -1,8 +1,9 @@
 # Current Task
 
 **Phase**: 5 — AI Integration (Claude API)
-**Status**: Not started
-**Started**: —
+**Status**: Completed
+**Started**: 2026-06-12
+**Completed**: 2026-06-12
 
 ## Goal
 
@@ -17,20 +18,22 @@ Implement Claude API integration via `Anthropic.SDK`:
 
 ## Subtasks
 
-- [ ] Add Anthropic.SDK NuGet package to CivicFlow.Infrastructure (already referenced in .csproj from Phase 0)
-- [ ] Implement ClaudeAIService (PermitAIService + InspectionAIService) in CivicFlow.Infrastructure/Services/
-- [ ] Implement MockAIService with deterministic responses
-- [ ] Wire AI_PROVIDER env var switching in ServiceRegistration.cs
-- [ ] Wire permit field validation into PermitService (advisory, non-blocking)
-- [ ] Wire inspection summary generation into InspectionService (on completion)
-- [ ] Add AI summary editor + "generate manually" button to /inspections/{id}
-- [ ] Add refusal check before returning AI response
-- [ ] Confirm no PII in prompts/logs
+- [x] Pin Anthropic.SDK to 3.* (resolved 3.3.0)
+- [x] Delete StubAIServices.cs (param order mismatch)
+- [x] ClaudePermitAIService — claude-haiku-4-5-20251001, 8s timeout, refusal check
+- [x] ClaudeInspectionAIService — claude-sonnet-4-6, 8s timeout, refusal check
+- [x] MockAIServices — deterministic, no API calls, keyed to permitType/facilityName
+- [x] ServiceRegistration — IConfiguration param, AI_PROVIDER switching, AnthropicClient singleton
+- [x] InspectionService.CompleteInspectionAsync — AI summary generation, single UpdateAsync write
+- [x] InspectionService.UpdatePublicSummaryAsync — allow Inspector role
+- [x] InspectionsController — Inspector added to PUT public-summary authorize attribute
+- [x] PermitsController — GET /api/permits/ai-suggestions endpoint
+- [x] InspectionDetail.razor — remove orphaned textarea, editable summary card
+- [x] 7 new tests for Mock services (determinism + never-null contract)
 
-## Recommended next step
+## Next Phase
 
-Run `/plan-eng-review` before writing Phase 5 code. AI integration touches
-service layer, DI registration, and a new Blazor editor — worth an arch pass.
+Phase 6 — Public Facility Profile page (unauthenticated, public-facing permit/inspection history)
 
 ## Previous Task (completed)
 

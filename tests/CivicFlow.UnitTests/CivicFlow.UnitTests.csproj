@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CivicFlow.Application\CivicFlow.Application.csproj" />
+    <ProjectReference Include="..\..\src\CivicFlow.Infrastructure\CivicFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
